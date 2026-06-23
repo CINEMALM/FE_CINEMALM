@@ -1,0 +1,8 @@
+{
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "prettier.configPath": "./.prettierrc",
+    "javascript.suggest.autoImports": true,
+    "typescript.suggest.autoImports": true,
+    "editor.formatOnSave": true,
+    "css.lint.unknownAtRules": "ignore"
+  }
