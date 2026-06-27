@@ -138,7 +138,7 @@ const Footer = () => {
             </p>
           </div>
           <div className="text-center text-sm">
-            Copyright 2023. NCC All Rights Reservered. Dev by{/* */}{" "}
+            Copyright 2023. NCC All Rights Reservered. Dev by Ngũ Hổ Tướng{/* */}{" "}
           </div>
         </div>
       </footer>

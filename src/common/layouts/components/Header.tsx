@@ -1,5 +1,7 @@
 import { BellOutlined, HeartFilled } from "@ant-design/icons";
 import { Badge } from "antd";
+import LoginModal from "../../../components/LoginModal";
+import RegisterModal from "../../../components/RegisterModal";
 
 const Header = () => {
   return (
@@ -8,7 +10,7 @@ const Header = () => {
         {/* Logo */}
         <div className="flex items-end gap-2 cursor-pointer">
           <img
-            src="https://www.freeiconspng.com/thumbs/bee-png/best-free-bee-png-image-5.png"
+            src="https://www.freeiconspng.com/uploads/movie-theatre-png-10.png"
             alt="Logo"
             className="w-16"
           />
@@ -36,13 +38,17 @@ const Header = () => {
             <BellOutlined className="text-xl text-white cursor-pointer" />
           </Badge>
 
-          <button className="border border-white px-6 py-2 rounded-full text-white">
-            Đăng ký
-          </button>
+          <RegisterModal>
+            <button className="border border-white px-6 py-2 rounded-full text-white hover:bg-white/10 transition cursor-pointer">
+              Đăng ký
+            </button>
+          </RegisterModal>
 
-          <button className="bg-red-500 px-6 py-2 rounded-full text-white">
-            Đăng nhập
-          </button>
+          <LoginModal>
+            <button className="bg-red-500 px-6 py-2 rounded-full text-white hover:opacity-90 transition cursor-pointer">
+              Đăng nhập
+            </button>
+          </LoginModal>
         </div>
       </div>
     </header>
