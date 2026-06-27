@@ -27,7 +27,7 @@ const Footer = () => {
             </li>
           </ul>
 
-          <div className="mb-6 flex flex-wrap items-center justify-center gap-4 sm:gap-10">
+          {/* <div className="mb-6 flex flex-wrap items-center justify-center gap-4 sm:gap-10">
             <div className="flex items-center gap-6">
               <a href="https://www.facebook.com/" target="_blank">
                 <img
@@ -124,7 +124,7 @@ const Footer = () => {
                 />
               </a>
             </div>
-          </div>
+          </div> */}
           <div className="text-center space-y-2 text-xs md:text-base mb-6">
             <p>Cơ quan chủ quản: BỘ VĂN HÓA, THỂ THAO VÀ DU LỊCH</p>
             <p>Bản quyền thuộc Trung tâm Chiếu phim CinemaLM.</p>
