@@ -1,1 +1,95 @@
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap");
 @import "tailwindcss";
+
+@theme {
+  --color-primary: #ef4444;
+  --font-sans: "Open Sans", sans-serif;
+  --font-montserrat: "Montserrat", sans-serif;
+}
+body {
+  font-family: "Montserrat", sans-serif;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0px 1000px rgba(255, 255, 255, 0.05) inset !important;
+  -webkit-text-fill-color: white !important;
+  transition: background-color 9999s ease-in-out 0s !important;
+}
+
+.custom-input-number .ant-input-number-input {
+  height: 35px !important;
+  line-height: 35px !important;
+}
+
+html,
+body {
+  overscroll-behavior: none;
+  height: 100%;
+}
+
+.no-wrap-label .ant-descriptions-item-label {
+  white-space: nowrap !important;
+}
+
+.no-wrap-label .ant-descriptions-item {
+  white-space: nowrap !important;
+}
+
+@page {
+  size: 76mm 75mm;
+  margin: 0;
+}
+
+@media print {
+  body {
+    margin: 0;
+  }
+
+  .print-wrapper {
+    width: 76mm;
+  }
+
+  .ticket {
+    width: 76mm;
+    height: 75mm;
+    padding: 5mm;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+    page-break-after: always;
+    position: relative;
+  }
+
+  .ticket::before {
+    content: "BEESTAR";
+    position: absolute;
+    top: 45%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-20deg);
+    font-size: 26px;
+    font-weight: 700;
+    color: rgba(12, 125, 65, 0.08);
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .ticket:last-child {
+    page-break-after: auto;
+  }
+
+  .title {
+    text-align: center;
+    font-size: 14px;
+    font-weight: bold;
+    margin-bottom: 8px;
+  }
+
+  .ticket p {
+    font-size: 12px;
+    margin: 4px 0;
+  }
+}
