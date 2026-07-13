@@ -1,13 +1,64 @@
-@import url("https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:wght@700&display=swap");
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #ef4444;
-  --font-sans: "Open Sans", sans-serif;
-  --font-montserrat: "Montserrat", sans-serif;
+  --color-primary: #dc0000;
+  --color-cinema-neutral: #0a0a0a;
+  --color-cinema-surface: #141414;
+  --color-cinema-primary: #f2f2f2;
+  --color-cinema-secondary: #9a9a9a;
+  --font-sans: "Inter", sans-serif;
+  --font-display: "Playfair Display", serif;
+  --font-montserrat: "Inter", sans-serif;
 }
+
+* {
+  box-sizing: border-box;
+}
+
 body {
-  font-family: "Montserrat", sans-serif;
+  margin: 0;
+  background: #0a0a0a;
+  color: #f2f2f2;
+  font-family: "Inter", sans-serif;
+}
+
+button,
+a {
+  border-radius: 2px;
+}
+
+.footer-link,
+.footer-link:link,
+.footer-link:visited,
+.footer-link:hover,
+.footer-link:active {
+  color: #9a9a9a !important;
+  text-decoration: none;
+}
+
+.footer-link:hover,
+.footer-link:focus-visible {
+  color: #f2f2f2 !important;
+}
+
+button {
+  cursor: pointer;
+}
+a {
+  color: #f2f2f2;
+  text-decoration: none;
+}
+
+.cinemalm-mobile-menu a:visited,
+.cinemalm-mobile-menu a:hover,
+.cinemalm-mobile-menu a:active {
+  color: #f2f2f2;
+}
+
+::selection {
+  background: #dc0000;
+  color: #0a0a0a;
 }
 
 input:-webkit-autofill,

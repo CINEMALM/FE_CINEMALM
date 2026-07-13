@@ -1,147 +1,125 @@
+import {
+  FacebookOutlined,
+  InstagramOutlined,
+  MailOutlined,
+  PhoneOutlined,
+  YoutubeOutlined,
+} from "@ant-design/icons";
+import { Link } from "react-router";
+
+const footerGroups = [
+  {
+    title: "CinemaLM",
+    links: [
+      { label: "Về chúng tôi", href: "/about" },
+      { label: "Hệ thống rạp", href: "/cinemas" },
+      { label: "Tuyển dụng", href: "/careers" },
+      { label: "Liên hệ", href: "/contact" },
+    ],
+  },
+  {
+    title: "Phim",
+    links: [
+      { label: "Đang chiếu", href: "/movie?status=now" },
+      { label: "Sắp chiếu", href: "/movie?status=soon" },
+      { label: "Lịch chiếu", href: "/showtime" },
+      { label: "Giá vé", href: "/ticket-price" },
+    ],
+  },
+  {
+    title: "Hỗ trợ",
+    links: [
+      { label: "Câu hỏi thường gặp", href: "/faqs" },
+      { label: "Chính sách thành viên", href: "/membership" },
+      { label: "Điều khoản sử dụng", href: "/terms" },
+      { label: "Bảo mật thông tin", href: "/privacy" },
+    ],
+  },
+];
+
 const Footer = () => {
   return (
-    <footer className="mt-[5%]">
-      <footer className="bg-[#0B0D13] text-white">
-        <div className="mx-auto p-8">
-          <ul className="flex items-center justify-center flex-wrap gap-4 sm:gap-10 mb-6 sm:mb-10 text-sm md:text-base">
-            <li>
-              <a href="/policy">Chính sách</a>
-            </li>
-            <li>
-              <a href="/movies">Lịch chiếu</a>
-            </li>
-            <li>
-              <a href="/news-list">Tin tức</a>
-            </li>
-            <li>
-              <a href="/ticket-price">Giá vé</a>
-            </li>
-            <li>
-              <a href="/faqs">Hỏi đáp</a>
-            </li>
-            <li>
-              <a href="/group-booking">Đặt vé nhóm, tập thể</a>
-            </li>
-            <li>
-              <a href="/contact">Liên hệ</a>
-            </li>
-          </ul>
-
-          {/* <div className="mb-6 flex flex-wrap items-center justify-center gap-4 sm:gap-10">
-            <div className="flex items-center gap-6">
-              <a href="https://www.facebook.com/" target="_blank">
-                <img
-                  alt="facebook"
-                  loading="lazy"
-                  width={30}
-                  height={30}
-                  decoding="async"
-                  data-nimg={1}
-                  className="rounded-sm"
-                  style={{ color: "transparent" }}
-                  srcSet="/_next/image?url=%2Fimages%2Ffacebook.png&w=32&q=75 1x, /_next/image?url=%2Fimages%2Ffacebook.png&w=64&q=75 2x"
-                  src="/_next/image?url=%2Fimages%2Ffacebook.png&w=64&q=75"
-                />
-              </a>
-              <a href="https://oa.zalo.me/ttcpqg" target="_blank">
-                <img
-                  alt="zalo"
-                  loading="lazy"
-                  width={30}
-                  height={30}
-                  decoding="async"
-                  data-nimg={1}
-                  style={{ color: "transparent" }}
-                  srcSet="/_next/image?url=%2Fimages%2Fzalo.webp&w=32&q=75 1x, /_next/image?url=%2Fimages%2Fzalo.webp&w=64&q=75 2x"
-                  src="/_next/image?url=%2Fimages%2Fzalo.webp&w=64&q=75"
-                />
-              </a>
-              <a
-                href="https://www.youtube.com/@TrungtamChieuphimQuocgiaNCC"
-                target="_blank"
-              >
-                <img
-                  alt="youtube"
-                  loading="lazy"
-                  width={30}
-                  height={30}
-                  decoding="async"
-                  data-nimg={1}
-                  className="rounded-sm"
-                  style={{ color: "transparent" }}
-                  srcSet="/_next/image?url=%2Fimages%2Fyoutube2.png&w=32&q=75 1x, /_next/image?url=%2Fimages%2Fyoutube2.png&w=64&q=75 2x"
-                  src="/_next/image?url=%2Fimages%2Fyoutube2.png&w=64&q=75"
-                />
-              </a>
-            </div>
-            <div className="flex gap-5 items-center">
-              <a
-                href="https://play.google.com/store/apps/details?id=vn.com.chieuphimquocgia.app&hl=en_US"
-                target="_blank"
-              >
-                <img
-                  alt="googlePlay"
-                  loading="lazy"
-                  width={140}
-                  height={38}
-                  decoding="async"
-                  data-nimg={1}
-                  style={{ color: "transparent" }}
-                  srcSet="/_next/image?url=%2Fimages%2Fgoogleplay.png&w=256&q=75 1x, /_next/image?url=%2Fimages%2Fgoogleplay.png&w=384&q=75 2x"
-                  src="/_next/image?url=%2Fimages%2Fgoogleplay.png&w=384&q=75"
-                />
-              </a>
-              <a
-                href="https://apps.apple.com/vn/app/chi%E1%BA%BFu-phim-qu%E1%BB%91c-gia-ncc/id6446946150"
-                target="_blank"
-              >
-                <img
-                  alt="appStore"
-                  loading="lazy"
-                  width={130}
-                  height={38}
-                  decoding="async"
-                  data-nimg={1}
-                  style={{ color: "transparent" }}
-                  srcSet="/_next/image?url=%2Fimages%2Fappstore.png&w=256&q=75 1x, /_next/image?url=%2Fimages%2Fappstore.png&w=384&q=75 2x"
-                  src="/_next/image?url=%2Fimages%2Fappstore.png&w=384&q=75"
-                />
-              </a>
-              <a
-                href="http://online.gov.vn/Home/WebDetails/4519"
-                target="_blank"
-              >
-                <img
-                  alt="certification"
-                  loading="lazy"
-                  width={130}
-                  height={38}
-                  decoding="async"
-                  data-nimg={1}
-                  style={{ color: "transparent" }}
-                  srcSet="/_next/image?url=%2Fimages%2Fcertification.png&w=256&q=75 1x, /_next/image?url=%2Fimages%2Fcertification.png&w=384&q=75 2x"
-                  src="/_next/image?url=%2Fimages%2Fcertification.png&w=384&q=75"
-                />
-              </a>
-            </div>
-          </div> */}
-          <div className="text-center space-y-2 text-xs md:text-base mb-6">
-            <p>Cơ quan chủ quản: BỘ VĂN HÓA, THỂ THAO VÀ DU LỊCH</p>
-            <p>Bản quyền thuộc Trung tâm Chiếu phim CinemaLM.</p>
-            <p>
-              Giấy phép số: 224/GP- TTĐT ngày 31/8/2010 - Chịu trách nhiệm -
-              Giám đốc.
-            </p>
-            <p>
-              Địa chỉ: Trịnh Văn Bô, Phường Nam Từ Liên, TP.Hà Nội - Điện thoại:
-              012 3456 789
+    <footer className="border-t border-white/10 bg-[#0A0A0A]">
+      <div className="mx-auto max-w-[1440px] px-4 py-12 sm:px-6 lg:px-10 lg:py-16">
+        <div className="grid gap-10 lg:grid-cols-[1.3fr_2fr_1fr]">
+          <div>
+            <Link to="/" className="inline-flex items-center gap-3">
+              <span className="block font-display text-2xl font-bold text-[#F2F2F2]">
+                Cinema<span className="font-black text-[#DC0000]">LM</span>
+              </span>
+            </Link>
+            <p className="mt-6 max-w-sm text-sm leading-7 text-[#9A9A9A]">
+              Không gian đặt vé điện ảnh cho trải nghiệm nhanh, rõ ràng và cao
+              cấp: chọn phim, chọn suất, giữ ghế realtime và nhận vé QR trong
+              tài khoản.
             </p>
           </div>
-          <div className="text-center text-sm">
-            Copyright 2023. NCC All Rights Reservered. Dev by Ngũ Hổ Tướng{/* */}{" "}
+
+          <div className="grid gap-8 sm:grid-cols-3">
+            {footerGroups.map((group) => (
+              <div key={group.title}>
+                <h3 className="text-xs font-black uppercase tracking-[0.22em] text-[#F2F2F2]">
+                  {group.title}
+                </h3>
+                <ul className="mt-5 space-y-3">
+                  {group.links.map((link) => (
+                    <li key={link.href}>
+                      <Link
+                        to={link.href}
+                        className="footer-link text-sm transition-colors"
+                      >
+                        {link.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+
+          <div>
+            <h3 className="text-xs font-black uppercase tracking-[0.22em] text-[#F2F2F2]">
+              Liên hệ
+            </h3>
+            <div className="mt-5 space-y-4 text-sm text-[#9A9A9A]">
+              <a
+                href="tel:0123456789"
+                className="flex items-center gap-3 hover:text-[#F2F2F2]"
+              >
+                <PhoneOutlined />
+                012 3456 789
+              </a>
+              <a
+                href="mailto:support@cinemalm.vn"
+                className="flex items-center gap-3 hover:text-[#F2F2F2]"
+              >
+                <MailOutlined />
+                support@cinemalm.vn
+              </a>
+              <p className="leading-6">Trịnh Văn Bô, Nam Từ Liêm, Hà Nội</p>
+            </div>
+            <div className="mt-6 flex gap-3">
+              {[FacebookOutlined, InstagramOutlined, YoutubeOutlined].map(
+                (Icon, index) => (
+                  <a
+                    key={index}
+                    href="/"
+                    className="grid h-10 w-10 place-items-center border border-white/10 bg-[#141414] text-[#F2F2F2] transition hover:border-white/30"
+                    aria-label="Social channel"
+                  >
+                    <Icon />
+                  </a>
+                ),
+              )}
+            </div>
           </div>
         </div>
-      </footer>
+
+        <div className="mt-12 flex flex-col gap-3 border-t border-white/10 pt-6 text-xs text-[#9A9A9A] sm:flex-row sm:items-center sm:justify-between">
+          <p>Copyright 2026 CinemaLM. All rights reserved.</p>
+          <p>Thiết kế theo hệ Ferrari: cinematic black, single red accent.</p>
+        </div>
+      </div>
     </footer>
   );
 };
