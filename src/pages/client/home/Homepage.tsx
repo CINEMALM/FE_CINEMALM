@@ -11,7 +11,13 @@ import {
   StarFilled,
   TeamOutlined,
 } from "@ant-design/icons";
+import { useQuery } from "@tanstack/react-query";
+import dayjs from "dayjs";
 import { Link } from "react-router";
+import { QUERYKEY } from "../../../common/constants/queryKey";
+import { getMovies } from "../../../common/services/movie.service";
+import type { ICategory } from "../../../common/types/category";
+import { getAgeBadge } from "../../../common/utils/agePolicy";
 
 const featuredMovie = {
   title: "Dạ Khúc Đỏ",
@@ -23,85 +29,6 @@ const featuredMovie = {
   poster:
     "https://images.unsplash.com/photo-1505686994434-e3cc5abf1330?auto=format&fit=crop&w=900&q=85",
 };
-
-const nowShowing = [
-  {
-    title: "Màn Đêm Thức Giấc",
-    age: "T16",
-    genre: "Tâm lý, hồi hộp",
-    rating: "9.1",
-    poster:
-      "https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&w=700&q=85",
-    times: ["10:30", "13:45", "19:10"],
-  },
-  {
-    title: "Hạ Âm",
-    age: "K",
-    genre: "Gia đình, âm nhạc",
-    rating: "8.8",
-    poster:
-      "https://images.unsplash.com/photo-1497032628192-86f99bcd76bc?auto=format&fit=crop&w=700&q=85",
-    times: ["09:15", "15:20", "20:30"],
-  },
-  {
-    title: "Đường Đua Cuối",
-    age: "T13",
-    genre: "Hành động",
-    rating: "9.0",
-    poster:
-      "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?auto=format&fit=crop&w=700&q=85",
-    times: [
-      "11:00",
-      "16:40",
-      "21:45",
-      "11:00",
-      "16:40",
-      "21:45",
-      "11:00",
-      "16:40",
-      "21:45",
-      "11:00",
-      "16:40",
-      "21:45",
-      "11:00",
-      "16:40",
-      "21:45",
-      "11:00",
-      "16:40",
-      "21:45",
-    ],
-  },
-  {
-    title: "Ký Ức Rạp Số 7",
-    age: "T18",
-    genre: "Kinh dị",
-    rating: "8.6",
-    poster:
-      "https://images.unsplash.com/photo-1509347528160-9a9e33742cdb?auto=format&fit=crop&w=700&q=85",
-    times: ["18:00", "22:15", "23:30"],
-  },
-];
-
-const comingSoon = [
-  {
-    title: "Thành Phố Không Ngủ",
-    date: "24.07",
-    image:
-      "https://images.unsplash.com/photo-1515634928627-2a4e0dae3ddf?auto=format&fit=crop&w=700&q=85",
-  },
-  {
-    title: "Mùa Gió Trở Lại",
-    date: "31.07",
-    image:
-      "https://images.unsplash.com/photo-1460881680858-30d872d5b530?auto=format&fit=crop&w=700&q=85",
-  },
-  {
-    title: "Vòng Lặp Ánh Sáng",
-    date: "08.08",
-    image:
-      "https://images.unsplash.com/photo-1524985069026-dd778a71c7b4?auto=format&fit=crop&w=700&q=85",
-  },
-];
 
 const experiences = [
   {
@@ -122,6 +49,27 @@ const experiences = [
 ];
 
 const HomePage = () => {
+  const nowShowingQuery = useQuery({
+    queryKey: [QUERYKEY.MOVIE, "HOME", "NOW_SHOWING"],
+    queryFn: () =>
+      getMovies({
+        status_release: "nowShowing",
+        sort: "release_date",
+        per_page: 4,
+      }),
+  });
+  const comingSoonQuery = useQuery({
+    queryKey: [QUERYKEY.MOVIE, "HOME", "COMING_SOON"],
+    queryFn: () =>
+      getMovies({
+        status_release: "upcoming",
+        sort: "release_date",
+        per_page: 3,
+      }),
+  });
+  const nowShowing = nowShowingQuery.data?.movies || [];
+  const comingSoon = comingSoonQuery.data?.movies || [];
+
   return (
     <div className="bg-[#0A0A0A] text-[#F2F2F2]">
       <section className="relative overflow-hidden border-b border-white/10">
@@ -293,63 +241,96 @@ const HomePage = () => {
         </div>
 
         <div className="mt-7 grid grid-cols-2 gap-2.5 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
-          {nowShowing.map((movie) => (
-            <article
-              key={movie.title}
-              className="group min-w-0 border border-white/10 bg-[#141414] p-1.5 transition duration-300 hover:z-10 hover:-translate-y-1 hover:border-white/30 hover:shadow-2xl hover:shadow-black/30 sm:p-2"
-            >
-              <div className="relative overflow-hidden">
-                <img
-                  src={movie.poster}
-                  alt={movie.title}
-                  width={600}
-                  height={900}
-                  loading="lazy"
-                  decoding="async"
-                  className="aspect-[2/3] w-full object-cover transition duration-500 group-hover:scale-105"
-                />
-                <span className="absolute left-2 top-2 bg-[#0A0A0A] px-2 py-0.5 text-[10px] font-black text-[#F2F2F2] shadow-lg sm:left-3 sm:top-3 sm:px-3 sm:py-1 sm:text-xs">
-                  {movie.age}
-                </span>
-              </div>
-              <div className="px-1 pb-1 pt-2.5 sm:px-2 sm:pb-2 sm:pt-3">
-                <div className="flex items-start justify-between gap-1.5 sm:gap-3">
-                  <h3 className="line-clamp-2 font-display text-sm font-bold leading-tight text-[#F2F2F2] sm:text-base lg:text-lg">
-                    {movie.title}
-                  </h3>
-                  <span
-                    className="shrink-0 text-[11px] font-bold text-[#F2F2F2] sm:text-xs"
-                    aria-label={`Điểm đánh giá ${movie.rating} trên 10`}
+          {nowShowingQuery.isLoading
+            ? Array.from({ length: 4 }, (_, index) => (
+                <div
+                  key={index}
+                  className="animate-pulse border border-white/10 bg-[#141414] p-2"
+                >
+                  <div className="aspect-[2/3] bg-white/5" />
+                  <div className="mt-3 h-4 bg-white/5" />
+                  <div className="mt-2 h-3 w-2/3 bg-white/5" />
+                </div>
+              ))
+            : nowShowing.map((movie) => {
+                const ageBadge = getAgeBadge(movie.ageRequire);
+                const genres = (movie.category as ICategory[])
+                  .map((category) => category.name)
+                  .join(", ");
+
+                return (
+                  <article
+                    key={movie._id}
+                    className="group min-w-0 border border-white/10 bg-[#141414] p-1.5 transition duration-300 hover:z-10 hover:-translate-y-1 hover:border-white/30 hover:shadow-2xl hover:shadow-black/30 sm:p-2"
                   >
-                    <StarFilled className="mr-1 text-[#DC0000]" />
-                    {movie.rating}
-                  </span>
-                </div>
-                <p className="mt-1.5 line-clamp-1 text-[11px] text-[#9A9A9A] sm:text-xs">
-                  {movie.genre}
-                </p>
-                <div className="pt-2.5">
-                  <p className="mb-1.5 flex items-center gap-1 text-[8px] font-black uppercase tracking-[0.1em] text-[#9A9A9A] sm:text-[9px]">
-                    <ClockCircleOutlined className="text-[#DC0000]" />
-                    Lịch chiếu
-                  </p>
-                  <div className="flex max-h-[76px] flex-wrap content-start gap-1 overflow-y-auto pr-0.5 [scrollbar-width:thin]">
-                    {movie.times.map((time) => (
-                      <Link
-                        key={time}
-                        to="/showtime"
-                        aria-label={`Đặt suất ${time}, phim ${movie.title}`}
-                        className="inline-flex min-h-7 shrink-0 items-center justify-center border border-white/10 px-2 py-1 text-[10px] font-bold leading-none text-[#F2F2F2] transition hover:border-[#DC0000] hover:bg-[#DC0000] hover:text-[#0A0A0A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DC0000] sm:min-h-8 sm:text-[11px]"
+                    <Link
+                      to={`/movie/${movie._id}`}
+                      aria-label={`Xem chi tiết phim ${movie.name}`}
+                      className="relative block overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DC0000]"
+                    >
+                      <img
+                        src={movie.poster}
+                        alt={movie.name}
+                        width={600}
+                        height={900}
+                        loading="lazy"
+                        decoding="async"
+                        className="aspect-[2/3] w-full object-cover transition duration-500 group-hover:scale-105"
+                      />
+                      <span
+                        className="absolute left-2 top-2 border border-black/20 px-2 py-0.5 text-[10px] font-black shadow-lg sm:left-3 sm:top-3 sm:px-3 sm:py-1 sm:text-xs"
+                        style={{
+                          backgroundColor: ageBadge.color,
+                          color: ["#FFD700", "#32CD32"].includes(ageBadge.color)
+                            ? "#0A0A0A"
+                            : "#FFFFFF",
+                        }}
                       >
-                        {time}
+                        {ageBadge.label}
+                      </span>
+                    </Link>
+                    <div className="px-1 pb-1 pt-2.5 sm:px-2 sm:pb-2 sm:pt-3">
+                      <div className="flex items-start justify-between gap-1.5 sm:gap-3">
+                        <Link
+                          to={`/movie/${movie._id}`}
+                          className="line-clamp-2 font-display text-sm font-bold leading-tight text-[#F2F2F2] transition hover:text-[#DC0000] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DC0000] sm:text-base lg:text-lg"
+                        >
+                          {movie.name}
+                        </Link>
+                        <span
+                          className="shrink-0 text-[11px] font-bold text-[#F2F2F2] sm:text-xs"
+                          aria-label={`Điểm đánh giá ${movie.rating} trên 10`}
+                        >
+                          <StarFilled className="mr-1 text-[#DC0000]" />
+                          {movie.rating}
+                        </span>
+                      </div>
+                      <p className="mt-1.5 line-clamp-1 text-[11px] text-[#9A9A9A] sm:text-xs">
+                        {genres || "Chưa cập nhật thể loại"}
+                      </p>
+                      <div className="pt-2.5 text-[9px] font-bold uppercase tracking-[0.1em] text-[#9A9A9A] sm:text-[10px]">
+                        {movie.duration} phút
+                        {movie.showtimeCount
+                          ? ` · ${movie.showtimeCount} suất chiếu`
+                          : " · Lịch chiếu đang cập nhật"}
+                      </div>
+                      <Link
+                        to={`/movie/${movie._id}`}
+                        className="mt-2.5 inline-flex min-h-9 w-full items-center justify-center gap-1.5 border-t border-white/10 pt-2.5 text-[9px] font-black uppercase tracking-[0.1em] text-[#F2F2F2] transition hover:text-[#DC0000] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DC0000] sm:min-h-10 sm:text-[10px]"
+                      >
+                        Xem chi tiết
+                        <RightOutlined aria-hidden="true" />
                       </Link>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </article>
-          ))}
+                    </div>
+                  </article>
+                );
+              })}
         </div>
+        {nowShowingQuery.isError && (
+          <p className="mt-6 text-center text-sm text-[#9A9A9A]">
+            Không thể tải phim đang chiếu.
+          </p>
+        )}
       </section>
 
       <section className="border-y border-white/10 bg-[#101010]">
@@ -367,26 +348,48 @@ const HomePage = () => {
             </p>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-3">
-            {comingSoon.map((movie) => (
-              <article
-                key={movie.title}
-                className="border border-white/10 bg-[#141414] p-3"
-              >
-                <img
-                  src={movie.image}
-                  alt={movie.title}
-                  className="aspect-[4/5] w-full object-cover"
-                />
-                <p className="mt-4 text-xs font-black uppercase tracking-[0.2em] text-[#DC0000]">
-                  {movie.date}
-                </p>
-                <h3 className="mt-2 font-display text-2xl font-bold leading-tight text-[#F2F2F2]">
-                  {movie.title}
-                </h3>
-              </article>
-            ))}
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4">
+            {comingSoonQuery.isLoading
+              ? Array.from({ length: 3 }, (_, index) => (
+                  <div
+                    key={index}
+                    className="animate-pulse border border-white/10 bg-[#141414] p-2"
+                  >
+                    <div className="aspect-[2/3] bg-white/5" />
+                    <div className="mt-3 h-3 bg-white/5" />
+                    <div className="mt-2 h-4 bg-white/5" />
+                  </div>
+                ))
+              : comingSoon.map((movie) => (
+                  <Link
+                    key={movie._id}
+                    to={`/movie/${movie._id}`}
+                    aria-label={`Xem chi tiết phim ${movie.name}`}
+                    className="group border border-white/10 bg-[#141414] p-2 transition hover:-translate-y-1 hover:border-white/30 sm:p-3"
+                  >
+                    <img
+                      src={movie.poster}
+                      alt={movie.name}
+                      width={600}
+                      height={900}
+                      loading="lazy"
+                      decoding="async"
+                      className="aspect-[2/3] w-full object-cover transition duration-500 group-hover:scale-[1.02]"
+                    />
+                    <p className="mt-3 text-[10px] font-black uppercase tracking-[0.16em] text-[#DC0000] sm:mt-4 sm:text-xs sm:tracking-[0.2em]">
+                      {dayjs(movie.releaseDate).format("DD.MM.YYYY")}
+                    </p>
+                    <h3 className="mt-2 line-clamp-2 font-display text-base font-bold leading-tight text-[#F2F2F2] sm:text-xl lg:text-2xl">
+                      {movie.name}
+                    </h3>
+                  </Link>
+                ))}
           </div>
+          {comingSoonQuery.isError && (
+            <p className="text-sm text-[#9A9A9A]">
+              Không thể tải phim sắp chiếu.
+            </p>
+          )}
         </div>
       </section>
 
