@@ -6,6 +6,7 @@ import ProfileLayout from "../common/layouts/ProfileLayout";
 import MyTicket from "../pages/client/user/MyTicket";
 import VerifyEmail from "../pages/client/auth/VerifyEmail";
 import ResetPassword from "../pages/client/auth/ResetPassword";
+import ListMovies from "../pages/client/movie/ListMovies";
 export const MainRoutes: RouteObject[] = [
   {
     path: "",
@@ -14,6 +15,10 @@ export const MainRoutes: RouteObject[] = [
       {
         index: true,
         element: <HomePage />,
+      },
+      {
+        path: "movie",
+        element: <ListMovies />,
       },
       {
         path: "verify-email",
