@@ -1,4 +1,10 @@
 import dayjs from "dayjs";
+import {
+  CalendarOutlined,
+  ClockCircleOutlined,
+  RightOutlined,
+  StarFilled,
+} from "@ant-design/icons";
 import { useState } from "react";
 import { Link } from "react-router";
 import { getAgeBadge } from "../../../common/utils/agePolicy";
@@ -17,11 +23,23 @@ const mockMovies = [
     country: "Mỹ",
     releaseDate: "2024-03-01",
     ageRequire: 13,
+    rating: "9.1",
     categories: ["Hành động", "Viễn tưởng"],
     showtimes: {
       [mockDates[0]]: [
         { time: "09:30", room: "Phòng 1" },
         { time: "12:15", room: "Phòng 2" },
+        { time: "19:45", room: "Phòng 3" },
+        { time: "19:45", room: "Phòng 3" },
+        { time: "19:45", room: "Phòng 3" },
+        { time: "19:45", room: "Phòng 3" },
+        { time: "19:45", room: "Phòng 3" },
+        { time: "09:30", room: "Phòng 1" },
+        { time: "12:15", room: "Phòng 2" },
+        { time: "19:45", room: "Phòng 3" },
+        { time: "19:45", room: "Phòng 3" },
+        { time: "19:45", room: "Phòng 3" },
+        { time: "19:45", room: "Phòng 3" },
         { time: "19:45", room: "Phòng 3" },
       ],
       [mockDates[1]]: [
@@ -40,6 +58,7 @@ const mockMovies = [
     country: "Mỹ",
     releaseDate: "2024-03-15",
     ageRequire: 0,
+    rating: "8.8",
     categories: ["Hoạt hình", "Gia đình"],
     showtimes: {
       [mockDates[0]]: [
@@ -59,6 +78,7 @@ const mockMovies = [
     country: "Mỹ",
     releaseDate: "2024-06-14",
     ageRequire: 0,
+    rating: "9.0",
     categories: ["Hoạt hình", "Tâm lý"],
     showtimes: {
       [mockDates[0]]: [{ time: "08:45", room: "Phòng 6" }],
@@ -75,99 +95,171 @@ const ListMovies = () => {
   const [selectedDate, setSelectedDate] = useState(mockDates[0]);
 
   return (
-    <div className="min-h-screen bg-[#020617] px-4 py-10 text-white sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-7xl">
-        <div className="flex items-center justify-center gap-2">
-          <div className="h-4 w-4 rounded-full bg-primary" />
-          <h2 className="text-xl font-semibold">Phim đang chiếu</h2>
+    <div className="min-h-screen bg-[#0A0A0A] text-[#F2F2F2]">
+      <section className="border-b border-white/10 bg-[#101010]">
+        <div className="mx-auto max-w-[1440px] px-4 py-12 sm:px-6 lg:px-10 lg:py-16">
+          <p className="text-xs font-black uppercase tracking-[0.28em] text-[#DC0000]">
+            Now Showing
+          </p>
+          <h1 className="mt-3 font-display text-4xl font-bold sm:text-5xl">
+            Phim đang chiếu
+          </h1>
+          <p className="mt-4 max-w-2xl text-sm leading-7 text-[#9A9A9A]">
+            Chọn ngày, khám phá các bộ phim nổi bật và đặt suất chiếu phù hợp
+            với bạn.
+          </p>
+        </div>
+      </section>
+
+      <main className="mx-auto max-w-[1440px] px-4 py-10 sm:px-6 lg:px-10 lg:py-16">
+        <div className="border border-white/10 bg-[#141414] p-4 sm:p-5">
+          <div className="flex items-center gap-3">
+            <CalendarOutlined className="text-[#DC0000]" />
+            <p className="text-xs font-black uppercase tracking-[0.2em]">
+              Chọn ngày xem
+            </p>
+          </div>
+
+          <div className="-mx-1 mt-4 flex snap-x gap-2 overflow-x-auto px-1 pb-1 sm:grid sm:grid-cols-7 sm:overflow-visible sm:pb-0">
+            {mockDates.map((item, index) => {
+              const isActive = item === selectedDate;
+              return (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => setSelectedDate(item)}
+                  aria-pressed={isActive}
+                  aria-label={`Xem lịch chiếu ngày ${dayjs(item).format(
+                    "DD/MM/YYYY",
+                  )}`}
+                  className={`min-h-16 min-w-24 snap-start border px-3 py-2 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DC0000] focus-visible:ring-offset-2 focus-visible:ring-offset-[#141414] sm:min-w-0 ${
+                    isActive
+                      ? "border-[#DC0000] bg-[#DC0000] text-[#0A0A0A]"
+                      : "border-white/10 bg-[#0A0A0A] text-[#9A9A9A] hover:border-white/30 hover:text-[#F2F2F2]"
+                  }`}
+                >
+                  <span className="block text-[10px] font-black uppercase tracking-[0.14em]">
+                    {index === 0 ? "Hôm nay" : dayjs(item).format("ddd")}
+                  </span>
+                  <span className="mt-1 block text-lg font-bold">
+                    {dayjs(item).format("DD/MM")}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        <div className="mt-6 flex flex-wrap justify-center gap-3">
-          {mockDates.map((item) => {
-            const isActive = item === selectedDate;
-            return (
-              <button
-                key={item}
-                onClick={() => setSelectedDate(item)}
-                className={`rounded-md border px-3 py-2 text-sm font-semibold transition ${
-                  isActive
-                    ? "border-primary bg-primary text-white"
-                    : "border-gray-700/80 bg-slate-900/70 text-gray-300 hover:border-primary/70 hover:text-white"
-                }`}
-              >
-                {dayjs(item).format("DD/MM")}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="mt-8 grid gap-6 lg:grid-cols-2">
+        <div className="mt-7 grid grid-cols-2 gap-2.5 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
           {mockMovies.map((movie) => {
             const showtimes = movie.showtimes[selectedDate] || [];
-            const { label, description } = getAgeBadge(movie.ageRequire);
+            const { label, color, description } = getAgeBadge(movie.ageRequire);
 
             return (
-              <div
+              <article
                 key={movie.id}
-                className="group overflow-hidden rounded-2xl border border-gray-800/70 bg-slate-900/80 shadow-[0_0_30px_rgba(0,0,0,0.25)] transition duration-300 hover:-translate-y-1 hover:border-primary/60"
+                className="group flex min-w-0 flex-col border border-white/10 bg-[#141414] p-1.5 transition duration-300 hover:z-10 hover:-translate-y-1 hover:border-white/30 hover:shadow-2xl hover:shadow-black/30 sm:p-2"
               >
-                <div className="flex flex-col sm:flex-row">
+                <Link
+                  to={`/movie/${movie.id}`}
+                  aria-label={`Xem chi tiết phim ${movie.name}`}
+                  className="relative block overflow-hidden bg-[#0A0A0A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DC0000]"
+                >
                   <img
                     src={movie.poster}
                     alt={movie.name}
-                    className="h-72 w-full object-cover sm:w-48"
+                    width={600}
+                    height={900}
+                    loading="lazy"
+                    decoding="async"
+                    className="aspect-[2/3] w-full object-cover transition duration-500 group-hover:scale-105"
                   />
-                  <div className="flex-1 p-6">
-                    <div className="flex flex-wrap items-center gap-3 text-sm text-gray-400">
-                      <span>{movie.duration} phút</span>
-                      <span>•</span>
-                      <span>{movie.country}</span>
-                    </div>
-                    <div className="mt-2 text-sm text-gray-400">
-                      {movie.categories.join(" • ")}
-                    </div>
+                  <span
+                    title={description}
+                    className="absolute left-2 top-2 border border-black/20 px-2 py-0.5 text-[10px] font-black shadow-lg sm:left-3 sm:top-3 sm:px-3 sm:py-1 sm:text-xs"
+                    style={{
+                      backgroundColor: color,
+                      color: ["#FFD700", "#32CD32"].includes(color)
+                        ? "#0A0A0A"
+                        : "#FFFFFF",
+                    }}
+                  >
+                    {label}
+                  </span>
+                </Link>
+
+                <div className="flex min-w-0 flex-1 flex-col px-1 pb-1 pt-2.5 sm:px-2 sm:pb-2 sm:pt-3">
+                  <div className="flex items-start justify-between gap-1.5 sm:gap-3">
                     <Link
                       to={`/movie/${movie.id}`}
-                      className="mt-3 block text-lg font-semibold uppercase text-white transition group-hover:text-primary"
+                      className="line-clamp-2 font-display text-sm font-bold leading-tight text-[#F2F2F2] transition hover:text-[#DC0000] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DC0000] sm:text-base lg:text-lg"
                     >
                       {movie.name}
                     </Link>
-                    <p className="mt-2 text-sm text-gray-400">
-                      Khởi chiếu:{" "}
-                      {dayjs(movie.releaseDate).format("DD/MM/YYYY")}
-                    </p>
-                    <p className="mt-2 text-sm text-primary">
-                      {label} - {description}
-                    </p>
-
-                    <div className="mt-4">
-                      <p className="mb-2 text-sm font-semibold text-gray-300">
-                        Lịch chiếu
-                      </p>
-                      {showtimes.length > 0 ? (
-                        <div className="flex flex-wrap gap-2">
-                          {showtimes.map((showtime) => (
-                            <button
-                              key={`${movie.id}-${showtime.time}`}
-                              className="rounded-md border border-gray-600/70 px-2.5 py-1.5 text-sm text-white transition hover:bg-gray-700/70"
-                            >
-                              {showtime.time} · {showtime.room}
-                            </button>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-gray-500">
-                          Không có lịch chiếu cho ngày này.
-                        </p>
-                      )}
-                    </div>
+                    <span
+                      className="shrink-0 text-[11px] font-bold sm:text-xs"
+                      aria-label={`Điểm đánh giá ${movie.rating} trên 10`}
+                    >
+                      <StarFilled className="mr-1 text-[#DC0000]" />
+                      {movie.rating}
+                    </span>
                   </div>
+
+                  <p className="mt-1.5 line-clamp-1 text-[11px] text-[#9A9A9A] sm:text-xs">
+                    {movie.categories.join(", ")}
+                  </p>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[10px] font-semibold text-[#9A9A9A] sm:mt-2 sm:text-xs">
+                    <span>{movie.duration} phút</span>
+                    <span className="hidden text-white/20 sm:inline">•</span>
+                    <span className="hidden sm:inline">{movie.country}</span>
+                    <span className="hidden text-white/20 lg:inline">•</span>
+                    <time
+                      dateTime={movie.releaseDate}
+                      className="hidden lg:inline"
+                    >
+                      {dayjs(movie.releaseDate).format("DD/MM/YYYY")}
+                    </time>
+                  </div>
+
+                  <div className="pt-2.5">
+                    <p className="mb-1.5 flex items-center gap-1 text-[8px] font-black uppercase tracking-[0.1em] text-[#9A9A9A] sm:text-[9px]">
+                      <ClockCircleOutlined className="text-[#DC0000]" />
+                      Lịch chiếu
+                    </p>
+                    {showtimes.length > 0 ? (
+                      <div className="flex max-h-[76px] flex-wrap content-start gap-1 overflow-y-auto pr-0.5 [scrollbar-width:thin]">
+                        {showtimes.map((showtime) => (
+                          <Link
+                            key={`${movie.id}-${showtime.time}`}
+                            to="/showtime"
+                            aria-label={`Đặt suất ${showtime.time}, ${showtime.room}, phim ${movie.name}`}
+                            title={`${showtime.time} · ${showtime.room}`}
+                            className="inline-flex min-h-7 shrink-0 items-center justify-center border border-white/10 px-2 py-1 text-[10px] font-bold leading-none text-[#F2F2F2] transition hover:border-[#DC0000] hover:bg-[#DC0000] hover:text-[#0A0A0A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DC0000] sm:min-h-8 sm:text-[11px]"
+                          >
+                            {showtime.time}
+                          </Link>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex min-h-8 items-center border border-dashed border-white/10 px-2 py-1.5 text-[9px] text-[#666666] sm:text-[10px]">
+                        Chưa có suất chiếu.
+                      </div>
+                    )}
+                  </div>
+
+                  <Link
+                    to={`/movie/${movie.id}`}
+                    className="mt-auto inline-flex min-h-9 items-center justify-center gap-1.5 border-t border-white/10 pt-2.5 text-[9px] font-black uppercase tracking-[0.1em] text-[#F2F2F2] transition hover:text-[#DC0000] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DC0000] sm:min-h-10 sm:text-[10px] sm:tracking-[0.14em]"
+                  >
+                    Xem chi tiết
+                    <RightOutlined aria-hidden="true" />
+                  </Link>
                 </div>
-              </div>
+              </article>
             );
           })}
         </div>
-      </div>
+      </main>
     </div>
   );
 };

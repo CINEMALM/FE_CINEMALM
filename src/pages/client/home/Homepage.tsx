@@ -50,7 +50,26 @@ const nowShowing = [
     rating: "9.0",
     poster:
       "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?auto=format&fit=crop&w=700&q=85",
-    times: ["11:00", "16:40", "21:45"],
+    times: [
+      "11:00",
+      "16:40",
+      "21:45",
+      "11:00",
+      "16:40",
+      "21:45",
+      "11:00",
+      "16:40",
+      "21:45",
+      "11:00",
+      "16:40",
+      "21:45",
+      "11:00",
+      "16:40",
+      "21:45",
+      "11:00",
+      "16:40",
+      "21:45",
+    ],
   },
   {
     title: "Ký Ức Rạp Số 7",
@@ -273,43 +292,59 @@ const HomePage = () => {
           </Link>
         </div>
 
-        <div className="mt-9 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-7 grid grid-cols-2 gap-2.5 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
           {nowShowing.map((movie) => (
             <article
               key={movie.title}
-              className="group border border-white/10 bg-[#141414] p-3 transition hover:border-white/30"
+              className="group min-w-0 border border-white/10 bg-[#141414] p-1.5 transition duration-300 hover:z-10 hover:-translate-y-1 hover:border-white/30 hover:shadow-2xl hover:shadow-black/30 sm:p-2"
             >
               <div className="relative overflow-hidden">
                 <img
                   src={movie.poster}
                   alt={movie.title}
-                  className="aspect-[3/4] w-full object-cover transition duration-500 group-hover:scale-105"
+                  width={600}
+                  height={900}
+                  loading="lazy"
+                  decoding="async"
+                  className="aspect-[2/3] w-full object-cover transition duration-500 group-hover:scale-105"
                 />
-                <span className="absolute left-3 top-3 bg-[#0A0A0A] px-3 py-1 text-xs font-black text-[#F2F2F2]">
+                <span className="absolute left-2 top-2 bg-[#0A0A0A] px-2 py-0.5 text-[10px] font-black text-[#F2F2F2] shadow-lg sm:left-3 sm:top-3 sm:px-3 sm:py-1 sm:text-xs">
                   {movie.age}
                 </span>
               </div>
-              <div className="p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <h3 className="min-h-14 font-display text-2xl font-bold leading-tight text-[#F2F2F2]">
+              <div className="px-1 pb-1 pt-2.5 sm:px-2 sm:pb-2 sm:pt-3">
+                <div className="flex items-start justify-between gap-1.5 sm:gap-3">
+                  <h3 className="line-clamp-2 font-display text-sm font-bold leading-tight text-[#F2F2F2] sm:text-base lg:text-lg">
                     {movie.title}
                   </h3>
-                  <span className="shrink-0 text-sm font-bold text-[#F2F2F2]">
+                  <span
+                    className="shrink-0 text-[11px] font-bold text-[#F2F2F2] sm:text-xs"
+                    aria-label={`Điểm đánh giá ${movie.rating} trên 10`}
+                  >
                     <StarFilled className="mr-1 text-[#DC0000]" />
                     {movie.rating}
                   </span>
                 </div>
-                <p className="mt-2 text-sm text-[#9A9A9A]">{movie.genre}</p>
-                <div className="mt-4 grid grid-cols-3 gap-2">
-                  {movie.times.map((time) => (
-                    <Link
-                      key={time}
-                      to="/showtime"
-                      className="border border-white/10 px-2 py-2 text-center text-xs font-bold text-[#F2F2F2] transition hover:border-[#DC0000]"
-                    >
-                      {time}
-                    </Link>
-                  ))}
+                <p className="mt-1.5 line-clamp-1 text-[11px] text-[#9A9A9A] sm:text-xs">
+                  {movie.genre}
+                </p>
+                <div className="pt-2.5">
+                  <p className="mb-1.5 flex items-center gap-1 text-[8px] font-black uppercase tracking-[0.1em] text-[#9A9A9A] sm:text-[9px]">
+                    <ClockCircleOutlined className="text-[#DC0000]" />
+                    Lịch chiếu
+                  </p>
+                  <div className="flex max-h-[76px] flex-wrap content-start gap-1 overflow-y-auto pr-0.5 [scrollbar-width:thin]">
+                    {movie.times.map((time) => (
+                      <Link
+                        key={time}
+                        to="/showtime"
+                        aria-label={`Đặt suất ${time}, phim ${movie.title}`}
+                        className="inline-flex min-h-7 shrink-0 items-center justify-center border border-white/10 px-2 py-1 text-[10px] font-bold leading-none text-[#F2F2F2] transition hover:border-[#DC0000] hover:bg-[#DC0000] hover:text-[#0A0A0A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DC0000] sm:min-h-8 sm:text-[11px]"
+                      >
+                        {time}
+                      </Link>
+                    ))}
+                  </div>
                 </div>
               </div>
             </article>
