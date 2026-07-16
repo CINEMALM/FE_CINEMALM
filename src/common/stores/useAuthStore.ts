@@ -6,9 +6,9 @@ import type { IUser } from "../types/user";
 interface AuthState {
   openModal: boolean;
   user: IUser | null;
-  token: string | null;
-  login: (user: IUser | null, token: string) => void;
-  logout: () => void;
+  isAuthenticated: boolean;
+  setUser: (user: IUser | null) => void;
+  clearAuth: () => void;
   setOpenModal: (e: boolean) => void;
 }
 
@@ -18,12 +18,18 @@ export const useAuthStore = create<AuthState>()(
       (set) => ({
         openModal: false,
         user: null,
-        token: null,
-        login: (user, token) => set({ user, token }),
-        logout: () => set({ user: null, token: null }),
+        isAuthenticated: false,
+        setUser: (user) => set({ user, isAuthenticated: Boolean(user) }),
+        clearAuth: () => set({ user: null, isAuthenticated: false }),
         setOpenModal: (open) => set({ openModal: open }),
       }),
-      { name: "Auth" },
+      {
+        name: "Auth",
+        partialize: (state) => ({
+          user: state.user,
+          isAuthenticated: state.isAuthenticated,
+        }),
+      },
     ),
     { name: "Auth" },
   ),

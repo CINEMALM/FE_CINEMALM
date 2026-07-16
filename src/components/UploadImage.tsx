@@ -45,6 +45,33 @@ export default function UploadImage({
     onChange?.([]);
   };
 
+  const [previewUrl, setPreviewUrl] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (!fileList.length) {
+      setPreviewUrl(undefined);
+      return;
+    }
+
+    const file = fileList[0];
+
+    if (typeof file.url === "string") {
+      setPreviewUrl(file.url);
+      return;
+    }
+
+    if (file.originFileObj instanceof Blob) {
+      const objectUrl = URL.createObjectURL(file.originFileObj);
+      setPreviewUrl(objectUrl);
+
+      return () => {
+        URL.revokeObjectURL(objectUrl);
+      };
+    }
+
+    setPreviewUrl(undefined);
+  }, [fileList]);
+
   return (
     <Upload
       listType="picture-card"
@@ -70,9 +97,7 @@ export default function UploadImage({
           }}
         >
           <Image
-            src={
-              fileList[0].url || URL.createObjectURL(fileList[0].originFileObj!)
-            }
+            src={previewUrl}
             alt="uploaded"
             width="100%"
             height="100%"

@@ -1,6 +1,10 @@
 import { Button, Form, Input, Modal } from "antd";
 import type { ReactElement } from "react";
 import React, { useState } from "react";
+import { useNavigate } from "react-router";
+import { useForgotPasswordMutation } from "../common/hooks/useAuth";
+import { useMessage } from "../common/hooks/useMessage";
+import type { IForgotPasswordPayload } from "../common/types/auth";
 import { formRules } from "../common/utils/formRules";
 
 const ForgotPasswordModal = ({
@@ -11,15 +15,22 @@ const ForgotPasswordModal = ({
   onSwitch?: () => void;
 }) => {
   const [open, setOpen] = useState(false);
-  const [form] = Form.useForm();
+  const [form] = Form.useForm<IForgotPasswordPayload>();
+  const forgotPasswordMutation = useForgotPasswordMutation();
+  const navigate = useNavigate();
+  const { HandleError, antdMessage } = useMessage();
 
-  const handleSubmit = (values: { email: string }) => {
-    console.log(values);
-
-    // TODO:
-    // - Gọi API quên mật khẩu
-    // - Hiển thị thông báo thành công/thất bại
-    // - Đóng modal sau khi gửi yêu cầu thành công
+  const handleSubmit = async (values: IForgotPasswordPayload) => {
+    try {
+      await forgotPasswordMutation.mutateAsync(values);
+      antdMessage.success(
+        "Đã gửi mã đặt lại mật khẩu. Vui lòng kiểm tra email.",
+      );
+      setOpen(false);
+      navigate(`/reset-password?email=${encodeURIComponent(values.email)}`);
+    } catch (error) {
+      HandleError(error, { fallback: "Không thể gửi email đặt lại mật khẩu." });
+    }
   };
 
   return (
@@ -37,10 +48,7 @@ const ForgotPasswordModal = ({
         afterClose={() => form.resetFields()}
         width={600}
         footer={null}
-        className="rounded-xl border border-white/10 backdrop-blur-md"
-        style={{
-          background: "hsl(222.2 84% 4.9%)",
-        }}
+        className="border border-white/10 backdrop-blur-md"
         title={
           <p className="text-lg font-semibold text-white/90 tracking-wide">
             Quên mật khẩu
@@ -68,27 +76,27 @@ const ForgotPasswordModal = ({
               placeholder="Email"
               className="bg-transparent! text-white placeholder:text-white/50! border-white/10!"
               style={{
-                height: 60,
+                height: 56,
                 boxShadow: "none",
               }}
             />
           </Form.Item>
 
-          <div className="pt-4!">
-            <Form.Item>
-              <Button
-                htmlType="submit"
-                style={{
-                  background: "var(--color-primary)",
-                  height: 45,
-                  width: "100%",
-                  borderRadius: "calc(infinity * 1px)",
-                }}
-              >
-                Xác nhận
-              </Button>
-            </Form.Item>
-          </div>
+          <Form.Item className="pt-4!">
+            <Button
+              htmlType="submit"
+              loading={forgotPasswordMutation.isPending}
+              style={{
+                background: "var(--color-primary)",
+                height: 45,
+                width: "100%",
+                borderRadius: 2,
+                fontWeight: 700,
+              }}
+            >
+              Gửi mã đặt lại mật khẩu
+            </Button>
+          </Form.Item>
         </Form>
       </Modal>
     </>

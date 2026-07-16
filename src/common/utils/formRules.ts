@@ -1,12 +1,9 @@
-// utils/formRules.ts
 import type { Rule } from "antd/es/form";
 
 export const formRules = {
   required: (fieldName: string, type: "choose" | "type" = "type"): Rule => ({
     required: true,
-    message: `Vui lòng ${
-      type === "type" ? "nhập" : "chọn"
-    } ${fieldName.toLowerCase()}!`,
+    message: `Vui lòng ${type === "type" ? "nhập" : "chọn"} ${fieldName.toLowerCase()}!`,
   }),
 
   minLength: (label: string, min: number): Rule => ({
@@ -23,10 +20,12 @@ export const formRules = {
     validator: (_, value) => {
       if (!value) return Promise.resolve();
       const length = value.trim().length;
-      if (length < min)
+      if (length < min) {
         return Promise.reject(new Error(`${label} ít nhất ${min} ký tự!`));
-      if (length > max)
+      }
+      if (length > max) {
         return Promise.reject(new Error(`${label} tối đa ${max} ký tự!`));
+      }
       return Promise.resolve();
     },
   }),

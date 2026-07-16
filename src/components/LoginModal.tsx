@@ -1,6 +1,10 @@
 import { Button, Form, Input, Modal } from "antd";
 import type { ReactElement } from "react";
 import React, { useState } from "react";
+import { useLoginMutation } from "../common/hooks/useAuth";
+import { useMessage } from "../common/hooks/useMessage";
+import type { ILoginPayload } from "../common/types/auth";
+import ForgotPasswordModal from "./ForgotPasswordModal";
 import RegisterModal from "./RegisterModal";
 
 const LoginModal = ({
@@ -11,30 +15,19 @@ const LoginModal = ({
   onSwitch?: () => void;
 }) => {
   const [open, setOpen] = useState(false);
-  const [form] = Form.useForm();
-  const [loading, setLoading] = useState(false);
+  const [form] = Form.useForm<ILoginPayload>();
+  const loginMutation = useLoginMutation();
+  const { HandleError, antdMessage } = useMessage();
 
-  const handleSubmit = async (values: {
-    email: string;
-    password: string;
-  }) => {
-    setLoading(true);
-
+  const handleSubmit = async (values: ILoginPayload) => {
     try {
-      console.log("Login values:", values);
-
-      // TODO: Gọi API đăng nhập tại đây
-
-      // TODO: Lưu thông tin người dùng sau khi đăng nhập
-
-      // TODO: Điều hướng sau khi đăng nhập thành công
-
+      await loginMutation.mutateAsync(values);
+      antdMessage.success("Đăng nhập thành công.");
       setOpen(false);
     } catch (error) {
-      // TODO: Hiển thị thông báo lỗi
-      console.error(error);
-    } finally {
-      setLoading(false);
+      HandleError(error, {
+        fallback: "Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.",
+      });
     }
   };
 
@@ -52,10 +45,7 @@ const LoginModal = ({
         onCancel={() => setOpen(false)}
         afterClose={() => form.resetFields()}
         width={600}
-        className="rounded-xl border border-white/10 backdrop-blur-md"
-        style={{
-          background: `hsl(222.2 84% 4.9%)`,
-        }}
+        className="border border-white/10 backdrop-blur-md"
         footer={null}
         title={
           <p className="text-lg font-semibold text-white/90 tracking-wide">
@@ -87,7 +77,7 @@ const LoginModal = ({
               placeholder="Email"
               className="bg-transparent! text-white placeholder:text-white/50! border-white/10!"
               style={{
-                height: 60,
+                height: 56,
                 boxShadow: "none",
               }}
             />
@@ -108,50 +98,35 @@ const LoginModal = ({
               placeholder="Mật khẩu"
               className="bg-transparent! text-white placeholder:text-white/50! border-white/10!"
               style={{
-                height: 60,
+                height: 56,
                 boxShadow: "none",
               }}
             />
           </Form.Item>
 
           <div className="flex justify-end">
-            <span
-              className="text-primary cursor-pointer hover:underline"
-              onClick={() => {
-                // TODO: Mở modal Quên mật khẩu
-              }}
-            >
-              Quên mật khẩu
-            </span>
+            <ForgotPasswordModal>
+              <span className="text-primary cursor-pointer hover:underline">
+                Quên mật khẩu
+              </span>
+            </ForgotPasswordModal>
           </div>
 
           <Form.Item className="mt-4!">
             <Button
               htmlType="submit"
-              loading={loading}
+              loading={loginMutation.isPending}
               style={{
                 background: "var(--color-primary)",
                 height: 45,
                 width: "100%",
-                borderRadius: "calc(infinity * 1px)",
+                borderRadius: 2,
+                fontWeight: 700,
               }}
             >
               Đăng nhập
             </Button>
           </Form.Item>
-
-          <Button
-            style={{
-              height: 45,
-              width: "100%",
-              borderRadius: "calc(infinity * 1px)",
-            }}
-            onClick={() => {
-              // TODO: Đăng nhập bằng Google
-            }}
-          >
-            Đăng nhập với Google
-          </Button>
 
           <p className="text-center mt-6">
             Bạn chưa có tài khoản?{" "}
