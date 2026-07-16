@@ -50,6 +50,58 @@ a {
   text-decoration: none;
 }
 
+.admin-theme .ant-table,
+.admin-theme .ant-table-container,
+.admin-theme .ant-table-content,
+.admin-theme .ant-table-cell {
+  background: #141414 !important;
+}
+
+.admin-theme .ant-table-thead > tr > th {
+  background: #101010 !important;
+  color: #f2f2f2 !important;
+}
+
+.admin-theme .ant-table-tbody > tr:hover > td {
+  background: #1a1a1a !important;
+}
+
+.admin-theme .ant-input,
+.admin-theme .ant-input-affix-wrapper,
+.admin-theme .ant-input-number,
+.admin-theme .ant-picker,
+.admin-theme .ant-select-selector,
+.admin-theme textarea.ant-input {
+  background: #101010 !important;
+  color: #f2f2f2 !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+.admin-theme .ant-input::placeholder,
+.admin-theme textarea.ant-input::placeholder {
+  color: #666 !important;
+}
+
+.admin-theme .ant-input-affix-wrapper .ant-input {
+  background: transparent !important;
+}
+
+.admin-theme .ant-pagination-item,
+.admin-theme .ant-pagination-prev button,
+.admin-theme .ant-pagination-next button {
+  background: #141414 !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+.admin-theme .ant-pagination-item-active {
+  background: #dc0000 !important;
+  border-color: #dc0000 !important;
+}
+
+.admin-theme .ant-pagination-item-active a {
+  color: #0a0a0a !important;
+}
+
 .cinemalm-mobile-menu a:visited,
 .cinemalm-mobile-menu a:hover,
 .cinemalm-mobile-menu a:active {

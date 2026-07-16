@@ -8,6 +8,8 @@ export interface IRoom {
   cols: number;
   rows: number;
   status: boolean;
+  seatCount?: number;
+  showtimeCount?: number;
   createdAt?: string;
   updatedAt?: string;
 }
