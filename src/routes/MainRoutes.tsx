@@ -7,6 +7,8 @@ import MyTicket from "../pages/client/user/MyTicket";
 import VerifyEmail from "../pages/client/auth/VerifyEmail";
 import ResetPassword from "../pages/client/auth/ResetPassword";
 import ListMovies from "../pages/client/movie/ListMovies";
+import DetailMovie from "../pages/client/movie/detail/DetailMovie";
+import ShowtimePicker from "../pages/client/movie/detail/components/ShowTimePicker";
 export const MainRoutes: RouteObject[] = [
   {
     path: "",
@@ -19,6 +21,14 @@ export const MainRoutes: RouteObject[] = [
       {
         path: "movie",
         element: <ListMovies />,
+      },
+      {
+        path: "movie/:id",
+        element: <DetailMovie />,
+        children: [
+          { index: true, element: <ShowtimePicker /> },
+          { path: ":showtimeId/:roomId", element: <ShowtimePicker /> },
+        ],
       },
       {
         path: "verify-email",

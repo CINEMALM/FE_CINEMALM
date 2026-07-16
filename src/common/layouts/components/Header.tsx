@@ -12,11 +12,10 @@ import LoginModal from "../../../components/LoginModal";
 import RegisterModal from "../../../components/RegisterModal";
 
 const navItems = [
-  { label: "Phim", href: "/movie" },
-  { label: "Lịch chiếu", href: "/showtime" },
-  { label: "Rạp/Giá vé", href: "/ticket-price" },
+  { label: "Phim", href: "/" },
+  { label: "Lịch chiếu", href: "/movie" },
+  { label: "Giá vé", href: "/ticket-price" },
   { label: "Ưu đãi", href: "/offers" },
-  { label: "Góc điện ảnh", href: "/news" },
 ];
 
 const Header = () => {

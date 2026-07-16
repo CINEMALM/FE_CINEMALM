@@ -31,18 +31,14 @@ const ModalSelectRoom = ({
         onCancel={() => setOpen(false)}
         open={open}
         width={600}
-        className="rounded-xl border border-white/10  backdrop-blur-md"
-        style={{
-          background: `hsl(222.2 84% 4.9%)`,
-        }}
         title={
-          <p className="text-lg font-semibold text-white/90 tracking-wide">
+          <p className="font-display text-xl font-bold text-[#F2F2F2]">
             Lựa chọn phòng chiếu
           </p>
         }
         footer={null}
       >
-        <div className="grid mt-8 grid-cols-3 gap-6 max-w-7xl mx-6 xl:mx-auto">
+        <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3">
           {room.map((item) => (
             <button
               key={item._id}
@@ -53,7 +49,7 @@ const ModalSelectRoom = ({
                 );
                 setInformation({ showtime: showtime, room: item });
               }}
-              className="border border-gray-500/50 hover:bg-gray-500/50 w-full text-white transition cursor-pointer py-4 rounded-full"
+              className="min-h-11 w-full border border-white/10 px-3 text-sm font-bold text-[#F2F2F2] transition hover:border-[#DC0000] hover:bg-[#DC0000] hover:text-[#0A0A0A]"
             >
               {item.name}
             </button>

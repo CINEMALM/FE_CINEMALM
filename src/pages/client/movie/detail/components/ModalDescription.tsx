@@ -23,18 +23,20 @@ const ModalDescription = ({
         open={open}
         destroyOnHidden
         width={800}
-        className="rounded-xl border border-white/10  backdrop-blur-md"
-        style={{
-          background: `hsl(222.2 84% 4.9%)`,
-        }}
         title={
-          <p className="text-lg font-semibold text-white/90 tracking-wide line-clamp-1">
-            Trailer phim {movieName}
+          <p className="line-clamp-1 font-display text-xl font-bold text-[#F2F2F2]">
+            Nội dung phim {movieName}
           </p>
         }
-        footer={<Button onClick={() => setOpen(false)}>Đóng</Button>}
+        footer={
+          <Button type="primary" onClick={() => setOpen(false)}>
+            Đóng
+          </Button>
+        }
       >
-        <p>{description}</p>
+        <p className="py-2 text-sm leading-7 text-[#B8B8B8]">
+          {description || "Nội dung phim đang được cập nhật."}
+        </p>
       </Modal>
     </>
   );

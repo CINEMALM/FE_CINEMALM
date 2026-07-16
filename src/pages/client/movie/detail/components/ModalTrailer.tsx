@@ -22,23 +22,23 @@ const ModalTrailer = ({
         open={open}
         destroyOnHidden
         width={1000}
-        className="rounded-xl border border-white/10 backdrop-blur-md"
-        style={{
-          background: `hsl(222.2 84% 4.9%)`,
-        }}
         title={
-          <p className="text-lg font-semibold text-white/90 tracking-wide line-clamp-1">
+          <p className="line-clamp-1 font-display text-xl font-bold text-[#F2F2F2]">
             Trailer phim {movie?.name}
           </p>
         }
-        footer={<Button onClick={() => setOpen(false)}>Đóng</Button>}
+        footer={
+          <Button type="primary" onClick={() => setOpen(false)}>
+            Đóng
+          </Button>
+        }
       >
-        <div className="min-h-[360px]">
+        <div className="aspect-video w-full overflow-hidden bg-black">
           <iframe
-            width="950"
-            height="560"
+            width="100%"
+            height="100%"
             src={movie?.trailer}
-            title="YouTube video player"
+            title={`Trailer phim ${movie?.name || ""}`}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             referrerPolicy="strict-origin-when-cross-origin"
             allowFullScreen
