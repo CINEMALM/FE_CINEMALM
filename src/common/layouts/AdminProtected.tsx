@@ -5,7 +5,7 @@ import { useAuthSelector } from "../stores/useAuthStore";
 const AdminProtected = ({ children }: { children: ReactNode }) => {
   const user = useAuthSelector((state) => state.user);
 
-  if (!user || user.role !== "admin") {
+  if (!user || user.role?.toLowerCase() !== "admin") {
     return <Navigate to="/" replace />;
   }
 

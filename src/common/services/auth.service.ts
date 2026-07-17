@@ -32,7 +32,7 @@ const normalizeUser = (raw?: unknown): IUser | null => {
     email: String(source.email || ""),
     phone: String(source.phone || ""),
     isVerified: Boolean(source.isVerified ?? source.is_verified ?? false),
-    role: String(source.role || "customer"),
+    role: String(source.role || "customer").toLowerCase(),
     banned: (source.banned as IUser["banned"]) || {
       isBanned: false,
       description: "",

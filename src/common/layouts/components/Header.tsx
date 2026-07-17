@@ -1,5 +1,6 @@
 import {
   CloseOutlined,
+  DashboardOutlined,
   MenuOutlined,
   ProfileOutlined,
   SearchOutlined,
@@ -24,6 +25,7 @@ const Header = () => {
   const isAuthenticated = useAuthSelector((state) => state.isAuthenticated);
   const logoutMutation = useLogoutMutation();
   const navigate = useNavigate();
+  const isAdmin = user?.role?.toLowerCase() === "admin";
 
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
@@ -94,6 +96,15 @@ const Header = () => {
 
           {isAuthenticated ? (
             <>
+              {isAdmin && (
+                <Link
+                  to="/admin"
+                  className="inline-flex h-11 items-center gap-2 border border-[#DC0000]/60 px-4 text-xs font-black uppercase tracking-[0.1em] text-[#DC0000] transition hover:bg-[#DC0000] hover:text-[#0A0A0A]"
+                >
+                  <DashboardOutlined />
+                  Trang quản trị
+                </Link>
+              )}
               <Link
                 to="/profile"
                 className="h-11 max-w-48 truncate border border-white/15 px-5 text-sm font-bold uppercase leading-[44px] tracking-[0.14em] text-[#F2F2F2] transition hover:border-white/40"
@@ -210,6 +221,16 @@ const Header = () => {
           <div className="mt-4 grid grid-cols-2 gap-3">
             {isAuthenticated ? (
               <>
+                {isAdmin && (
+                  <Link
+                    to="/admin"
+                    onClick={() => setOpen(false)}
+                    className="col-span-2 flex h-12 items-center justify-center gap-2 border border-[#DC0000]/60 text-sm font-black uppercase tracking-[0.12em] text-[#DC0000]"
+                  >
+                    <DashboardOutlined />
+                    Trang quản trị
+                  </Link>
+                )}
                 <Link
                   to="/profile"
                   onClick={() => setOpen(false)}
