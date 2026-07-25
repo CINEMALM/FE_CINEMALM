@@ -18,4 +18,5 @@ export interface ISeat {
 export interface ISeatStatus extends ISeat {
   userId: string | null;
   bookingStatus: string;
+  heldUntil?: string | null;
 }

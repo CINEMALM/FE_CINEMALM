@@ -12,11 +12,13 @@ const ModalSelectRoom = ({
   room,
   showtime,
   movieId,
+  onSelect,
 }: {
   children: ReactElement;
   room: IRoom[];
   showtime: IShowtime;
   movieId?: string;
+  onSelect?: (showtime: IShowtime, room: IRoom) => void;
 }) => {
   const [open, setOpen] = useState(false);
   const setInformation = useCheckoutSelector((state) => state.setInformation);
@@ -43,11 +45,18 @@ const ModalSelectRoom = ({
             <button
               key={item._id}
               onClick={() => {
+                const selectedShowtime = {
+                  ...showtime,
+                  _id: item.showtimeId || showtime._id,
+                  roomId: item,
+                  price: item.showtimePrice || showtime.price,
+                };
                 setOpen(false);
                 nav(
-                  `/movie/${movieId ? movieId : id}/${showtime._id}/${item._id}?hour=${dayjs(showtime.startTime).format("HH:mm")}&movieId=${showtime.movieId._id}`,
+                  `/movie/${movieId ? movieId : id}/${selectedShowtime._id}/${item._id}?hour=${dayjs(showtime.startTime).format("HH:mm")}&movieId=${showtime.movieId._id}`,
                 );
-                setInformation({ showtime: showtime, room: item });
+                setInformation({ showtime: selectedShowtime, room: item });
+                onSelect?.(selectedShowtime, item);
               }}
               className="min-h-11 w-full border border-white/10 px-3 text-sm font-bold text-[#F2F2F2] transition hover:border-[#DC0000] hover:bg-[#DC0000] hover:text-[#0A0A0A]"
             >

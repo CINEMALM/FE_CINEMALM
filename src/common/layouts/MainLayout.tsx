@@ -5,6 +5,7 @@ import { ConfigProvider, theme, App } from "antd";
 import { useAuthMe } from "../hooks/useAuth";
 import { useEffect } from "react";
 import { useAuthStore } from "../stores/useAuthStore";
+import LoginModal from "../../components/LoginModal";
 
 const AuthInitializer = () => {
   const authMeQuery = useAuthMe();
@@ -53,6 +54,7 @@ const MainLayout = () => {
       >
         <App>
           <AuthInitializer />
+          <LoginModal global />
           <Header />
           <main>
             <Outlet />

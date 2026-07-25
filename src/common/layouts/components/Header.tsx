@@ -6,6 +6,7 @@ import {
   SearchOutlined,
 } from "@ant-design/icons";
 import { useEffect, useState } from "react";
+import type { MouseEvent } from "react";
 import { Link, useNavigate } from "react-router";
 import { useLogoutMutation } from "../../hooks/useAuth";
 import { useAuthSelector } from "../../stores/useAuthStore";
@@ -13,10 +14,8 @@ import LoginModal from "../../../components/LoginModal";
 import RegisterModal from "../../../components/RegisterModal";
 
 const navItems = [
-  { label: "Phim", href: "/" },
-  { label: "Lịch chiếu", href: "/movie" },
-  { label: "Giá vé", href: "/ticket-price" },
-  { label: "Ưu đãi", href: "/offers" },
+  { label: "Trang chủ", href: "/" },
+  { label: "Phim & lịch chiếu", href: "/movie" },
 ];
 
 const Header = () => {
@@ -26,6 +25,14 @@ const Header = () => {
   const logoutMutation = useLogoutMutation();
   const navigate = useNavigate();
   const isAdmin = user?.role?.toLowerCase() === "admin";
+  const requestLogin = useAuthSelector((state) => state.requestLogin);
+
+  const requireLogin = (event: MouseEvent<HTMLAnchorElement>, path: string) => {
+    if (isAuthenticated) return;
+    event.preventDefault();
+    setOpen(false);
+    requestLogin({ path });
+  };
 
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
@@ -88,6 +95,7 @@ const Header = () => {
           </button>
           <Link
             to="/profile/ticket"
+            onClick={(event) => requireLogin(event, "/profile/ticket")}
             className="grid h-11 w-11 place-items-center border border-white/10 bg-[#141414] text-[#F2F2F2] transition hover:border-white/30"
             aria-label="Vé của tôi"
           >
@@ -203,7 +211,10 @@ const Header = () => {
           <div className="mt-8 grid grid-cols-2 gap-3">
             <Link
               to="/profile/ticket"
-              onClick={() => setOpen(false)}
+              onClick={(event) => {
+                setOpen(false);
+                requireLogin(event, "/profile/ticket");
+              }}
               className="flex h-12 items-center justify-center gap-2 border border-white/15 text-sm font-bold uppercase tracking-[0.14em] text-[#F2F2F2]"
             >
               <ProfileOutlined />

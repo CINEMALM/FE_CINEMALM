@@ -5,7 +5,6 @@ import {
   EnvironmentOutlined,
   FireOutlined,
   PlayCircleOutlined,
-  QrcodeOutlined,
   RightOutlined,
   SafetyCertificateOutlined,
   StarFilled,
@@ -42,9 +41,9 @@ const experiences = [
     text: "Checkout nhanh với thông tin vé rõ ràng trước khi chuyển sang cổng thanh toán.",
   },
   {
-    icon: QrcodeOutlined,
-    title: "Vé QR trong tài khoản",
-    text: "Quản lý vé đã mua, xem chi tiết vé và dùng QR để xác nhận tại rạp.",
+    icon: SafetyCertificateOutlined,
+    title: "Vé trong tài khoản",
+    text: "Theo dõi booking pending, vé đã xác nhận và xem đầy đủ thông tin ghế trong tài khoản.",
   },
 ];
 
@@ -96,7 +95,7 @@ const HomePage = () => {
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link
-                to="/showtime"
+                to="/movie"
                 className="inline-flex h-[52px] items-center justify-center gap-3 bg-[#DC0000] px-6 text-sm font-black uppercase tracking-[0.16em] text-[#0A0A0A] transition hover:bg-[#F2F2F2]"
               >
                 Đặt vé ngay
@@ -212,7 +211,7 @@ const HomePage = () => {
               </button>
             ))}
             <Link
-              to="/showtime"
+              to="/movie"
               className="inline-flex h-16 items-center justify-center bg-[#DC0000] px-6 text-sm font-black uppercase tracking-[0.14em] text-[#0A0A0A] transition hover:bg-[#F2F2F2] md:col-span-2 xl:col-span-1"
             >
               Tìm vé

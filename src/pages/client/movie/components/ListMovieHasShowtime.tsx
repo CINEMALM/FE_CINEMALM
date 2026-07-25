@@ -70,7 +70,7 @@ const ListMovieHasShowtime = ({
                 style={{ gridTemplateColumns: "repeat(5, 1fr)" }}
               >
                 {item.showtimes.map((stItem) =>
-                  stItem && (stItem.externalRoom as IRoom[]).length > 1 ? (
+                  (stItem.externalRoom?.length || 0) > 1 ? (
                     <ModalSelectRoom
                       movieId={item._id}
                       room={stItem.externalRoom as IRoom[]}

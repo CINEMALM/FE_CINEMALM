@@ -2,6 +2,7 @@ import type { ICategory } from "../types/category";
 import type { IMovie } from "../types/movie";
 import type { IRoom } from "../types/room";
 import type { ISeat } from "../types/seat";
+import type { IShowtime } from "../types/showtime";
 import api from "../utils/api";
 
 interface LaravelPaginator<T> {
@@ -61,6 +62,17 @@ export interface MoviePayload {
   category_ids: number[];
 }
 
+export interface ShowtimePayload {
+  movie_id: number;
+  room_id: number;
+  start_time: string;
+  prices: {
+    NORMAL: number;
+    VIP: number;
+    COUPLE: number;
+  };
+}
+
 interface BackendCategory {
   id: number;
   name: string;
@@ -116,6 +128,28 @@ interface BackendSeat {
   span: number;
   type: ISeat["type"];
   status: boolean;
+}
+
+interface BackendShowtimePrice {
+  id: number;
+  seat_type: string;
+  price: number | string;
+}
+
+interface BackendShowtime {
+  id: number;
+  movie_id: number;
+  room_id: number;
+  movie: BackendMovie;
+  room: BackendRoom;
+  start_time: string;
+  end_time: string;
+  day_of_week: number;
+  status: IShowtime["status"];
+  booked_count?: number;
+  prices?: BackendShowtimePrice[];
+  created_at?: string;
+  updated_at: string;
 }
 
 const normalizeList = <TBackend, TFrontend>(
@@ -200,6 +234,24 @@ const normalizeSeat = (item: BackendSeat): ISeat => ({
   status: item.status,
 });
 
+const normalizeShowtime = (item: BackendShowtime): IShowtime => ({
+  _id: String(item.id),
+  movieId: normalizeMovie(item.movie),
+  roomId: normalizeRoom(item.room),
+  startTime: item.start_time,
+  endTime: item.end_time,
+  dayOfWeek: item.day_of_week,
+  price: (item.prices || []).map((price) => ({
+    _id: String(price.id),
+    seatType: price.seat_type,
+    value: Number(price.price),
+  })),
+  status: item.status,
+  bookedCount: item.booked_count,
+  createdAt: item.created_at,
+  updatedAt: item.updated_at,
+});
+
 export const adminService = {
   async categories(params?: Record<string, unknown>) {
     const response = await api.get<
@@ -238,6 +290,37 @@ export const adminService = {
   },
   async disableMovie(id: string) {
     await api.delete(`/admin/movies/${id}`);
+  },
+
+  async showtimes(params?: Record<string, unknown>) {
+    const response = await api.get<
+      ApiResponse<LaravelPaginator<BackendShowtime>>
+    >("/admin/showtimes", { params });
+    return normalizeList(response.data.data, normalizeShowtime);
+  },
+  async createShowtime(payload: ShowtimePayload) {
+    const response = await api.post<ApiResponse<BackendShowtime>>(
+      "/admin/showtimes",
+      payload,
+    );
+    return normalizeShowtime(response.data.data);
+  },
+  async updateShowtime(
+    id: string,
+    payload: Partial<ShowtimePayload> & { status?: string },
+  ) {
+    const response = await api.patch<ApiResponse<BackendShowtime>>(
+      `/admin/showtimes/${id}`,
+      payload,
+    );
+    return normalizeShowtime(response.data.data);
+  },
+  async cancelShowtime(id: string, cancelDescription?: string) {
+    const response = await api.delete<ApiResponse<BackendShowtime>>(
+      `/admin/showtimes/${id}`,
+      { data: { cancel_description: cancelDescription } },
+    );
+    return normalizeShowtime(response.data.data);
   },
 
   async rooms(params?: Record<string, unknown>) {

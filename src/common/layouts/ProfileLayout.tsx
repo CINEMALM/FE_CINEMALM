@@ -1,8 +1,21 @@
-import { NavLink, Outlet } from "react-router";
+import { useEffect } from "react";
+import { Navigate, NavLink, Outlet, useLocation } from "react-router";
 import { useLogoutMutation } from "../hooks/useAuth";
+import { useAuthSelector } from "../stores/useAuthStore";
 
 const ProfileLayout = () => {
   const logoutMutation = useLogoutMutation();
+  const location = useLocation();
+  const isAuthenticated = useAuthSelector((state) => state.isAuthenticated);
+  const requestLogin = useAuthSelector((state) => state.requestLogin);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      requestLogin({ path: `${location.pathname}${location.search}` });
+    }
+  }, [isAuthenticated, location.pathname, location.search, requestLogin]);
+
+  if (!isAuthenticated) return <Navigate to="/" replace />;
 
   return (
     <div className="min-h-screen">

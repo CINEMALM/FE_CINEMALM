@@ -1,35 +1,38 @@
-export type TicketStatusEnum = ["PENDING", "CONFIRMED", "CANCELLED"];
+export type TicketStatus = "pending" | "confirmed" | "cancelled";
+export type PaymentStatus =
+  | "pending"
+  | "paid"
+  | "expired"
+  | "cancelled"
+  | "failed";
 
 export interface ITicketItem {
+  _id: string;
   seatId: string;
   seatLabel: string;
   price: number;
   type: string;
 }
 
-export interface ICustomerInfo {
-  userName: string;
-  phone: string;
-}
-
 export interface ITicket {
   _id: string;
   userId: string;
-  ticketId: string;
+  ticketCode: string;
   showtimeId: string;
-  status: TicketStatusEnum | string;
-  customerInfo: ICustomerInfo;
-  movieId: string;
+  status: TicketStatus;
+  paymentStatus: PaymentStatus;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
   movieName: string;
-  roomId: string;
+  moviePoster: string;
   roomName: string;
   items: ITicketItem[];
   startTime: string;
-  qrCode: string;
   totalPrice: number;
-  usedTime?: string;
-  isPaid: boolean;
-  cancelDescription?: string;
+  paidAt?: string | null;
+  expiresAt?: string | null;
+  cancelDescription?: string | null;
   createdAt: string;
   updatedAt: string;
 }

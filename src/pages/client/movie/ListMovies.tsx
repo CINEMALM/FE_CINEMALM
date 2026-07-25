@@ -3,11 +3,13 @@ import { RightOutlined, StarFilled } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link } from "react-router";
+import { Input, Pagination, Select } from "antd";
 import { QUERYKEY } from "../../../common/constants/queryKey";
 import { getMovies } from "../../../common/services/movie.service";
 import type { ICategory } from "../../../common/types/category";
 import type { IMovie } from "../../../common/types/movie";
 import { getAgeBadge } from "../../../common/utils/agePolicy";
+import { adminService } from "../../../common/services/admin.service";
 
 type MovieStatusFilter = "nowShowing" | "upcoming" | "released";
 
@@ -44,14 +46,24 @@ const statusContent: Record<
 const ListMovies = () => {
   const [statusFilter, setStatusFilter] =
     useState<MovieStatusFilter>("nowShowing");
+  const [page, setPage] = useState(1);
+  const [keyword, setKeyword] = useState("");
+  const [categoryId, setCategoryId] = useState<number>();
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: [QUERYKEY.MOVIE, statusFilter],
+    queryKey: [QUERYKEY.MOVIE, statusFilter, page, keyword, categoryId],
     queryFn: () =>
       getMovies({
         status_release: statusFilter,
         sort: "release_date",
-        per_page: 60,
+        page,
+        per_page: 12,
+        keyword: keyword || undefined,
+        category_id: categoryId,
       }),
+  });
+  const categories = useQuery({
+    queryKey: [QUERYKEY.CATEGORY, "MOVIE_FILTER"],
+    queryFn: () => adminService.categories({ per_page: 100 }),
   });
   const movies = data?.movies || [];
   const currentContent = statusContent[statusFilter];
@@ -83,7 +95,10 @@ const ListMovies = () => {
                 key={filter.value}
                 type="button"
                 aria-pressed={filter.value === statusFilter}
-                onClick={() => setStatusFilter(filter.value)}
+                onClick={() => {
+                  setPage(1);
+                  setStatusFilter(filter.value);
+                }}
                 className={`min-h-11 border px-2 text-[10px] font-black uppercase tracking-[0.1em] transition sm:text-xs ${
                   filter.value === statusFilter
                     ? "border-[#DC0000] bg-[#DC0000] text-[#0A0A0A]"
@@ -93,6 +108,32 @@ const ListMovies = () => {
                 {filter.label}
               </button>
             ))}
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-[1fr_280px]">
+            <Input.Search
+              allowClear
+              placeholder="Tìm tên phim, đạo diễn..."
+              onSearch={(value) => {
+                setPage(1);
+                setKeyword(value.trim());
+              }}
+            />
+            <Select
+              allowClear
+              showSearch
+              optionFilterProp="label"
+              placeholder="Tất cả thể loại"
+              loading={categories.isLoading}
+              value={categoryId}
+              onChange={(value) => {
+                setPage(1);
+                setCategoryId(value);
+              }}
+              options={categories.data?.items.map((category) => ({
+                value: Number(category._id),
+                label: category.name,
+              }))}
+            />
           </div>
         </div>
 
@@ -222,6 +263,16 @@ const ListMovies = () => {
               );
             })}
           </div>
+        )}
+        {!isLoading && !isError && data && data.meta.total > 0 && (
+          <Pagination
+            className="mt-8"
+            align="end"
+            current={page}
+            pageSize={data.meta.limit}
+            total={data.meta.total}
+            onChange={setPage}
+          />
         )}
       </main>
     </div>

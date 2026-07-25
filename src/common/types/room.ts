@@ -1,4 +1,5 @@
 import type { ISeat } from "./seat";
+import type { IPriceShowTime } from "./showtime";
 
 export interface IRoom {
   _id: string;
@@ -12,6 +13,8 @@ export interface IRoom {
   showtimeCount?: number;
   createdAt?: string;
   updatedAt?: string;
+  showtimeId?: string;
+  showtimePrice?: IPriceShowTime[];
 }
 
 export interface IPayloadRoomWithSeats extends Omit<IRoom, "_id" | "status"> {

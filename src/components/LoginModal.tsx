@@ -1,20 +1,29 @@
 import { Button, Form, Input, Modal } from "antd";
 import type { ReactElement } from "react";
 import React, { useState } from "react";
+import { useNavigate } from "react-router";
 import { useLoginMutation } from "../common/hooks/useAuth";
 import { useMessage } from "../common/hooks/useMessage";
+import { authService } from "../common/services/auth.service";
 import type { ILoginPayload } from "../common/types/auth";
+import { useAuthSelector, useAuthStore } from "../common/stores/useAuthStore";
 import ForgotPasswordModal from "./ForgotPasswordModal";
 import RegisterModal from "./RegisterModal";
 
 const LoginModal = ({
   children,
   onSwitch,
+  global = false,
 }: {
-  children: ReactElement;
+  children?: ReactElement;
   onSwitch?: () => void;
+  global?: boolean;
 }) => {
   const [open, setOpen] = useState(false);
+  const globalOpen = useAuthSelector((state) => state.openModal);
+  const setGlobalOpen = useAuthSelector((state) => state.setOpenModal);
+  const clearPendingLogin = useAuthSelector((state) => state.clearPendingLogin);
+  const navigate = useNavigate();
   const [form] = Form.useForm<ILoginPayload>();
   const loginMutation = useLoginMutation();
   const { HandleError, antdMessage } = useMessage();
@@ -24,6 +33,15 @@ const LoginModal = ({
       await loginMutation.mutateAsync(values);
       antdMessage.success("Đăng nhập thành công.");
       setOpen(false);
+      setGlobalOpen(false);
+      const { pendingAction, pendingPath, clearPendingLogin } =
+        useAuthStore.getState();
+      clearPendingLogin();
+      if (pendingAction) {
+        pendingAction();
+      } else if (pendingPath) {
+        navigate(pendingPath);
+      }
     } catch (error) {
       HandleError(error, {
         fallback: "Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.",
@@ -33,16 +51,20 @@ const LoginModal = ({
 
   return (
     <>
-      {React.cloneElement(children, {
-        onClick: () => {
-          if (onSwitch) onSwitch();
-          setOpen(true);
-        },
-      } as { onClick: () => void })}
+      {children &&
+        React.cloneElement(children, {
+          onClick: () => {
+            if (onSwitch) onSwitch();
+            setOpen(true);
+          },
+        } as { onClick: () => void })}
 
       <Modal
-        open={open}
-        onCancel={() => setOpen(false)}
+        open={global ? globalOpen : open}
+        onCancel={() => {
+          setOpen(false);
+          if (global) clearPendingLogin();
+        }}
         afterClose={() => form.resetFields()}
         width={600}
         className="border border-white/10 backdrop-blur-md"
@@ -127,6 +149,15 @@ const LoginModal = ({
               Đăng nhập
             </Button>
           </Form.Item>
+
+          <div className="relative my-5 border-t border-white/10">
+            <span className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 bg-[#141414] px-3 text-xs text-[#9A9A9A]">
+              hoặc
+            </span>
+          </div>
+          <Button className="h-11 w-full" onClick={authService.googleLogin}>
+            Đăng nhập với Google
+          </Button>
 
           <p className="text-center mt-6">
             Bạn chưa có tài khoản?{" "}

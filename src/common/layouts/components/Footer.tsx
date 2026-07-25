@@ -11,28 +11,22 @@ const footerGroups = [
   {
     title: "CinemaLM",
     links: [
-      { label: "Về chúng tôi", href: "/about" },
-      { label: "Hệ thống rạp", href: "/cinemas" },
-      { label: "Tuyển dụng", href: "/careers" },
-      { label: "Liên hệ", href: "/contact" },
+      { label: "Trang chủ", href: "/" },
+      { label: "Danh sách phim", href: "/movie" },
     ],
   },
   {
     title: "Phim",
     links: [
-      { label: "Đang chiếu", href: "/movie?status=now" },
-      { label: "Sắp chiếu", href: "/movie?status=soon" },
-      { label: "Lịch chiếu", href: "/showtime" },
-      { label: "Giá vé", href: "/ticket-price" },
+      { label: "Đang chiếu", href: "/movie" },
+      { label: "Lịch chiếu theo phim", href: "/movie" },
     ],
   },
   {
-    title: "Hỗ trợ",
+    title: "Tài khoản",
     links: [
-      { label: "Câu hỏi thường gặp", href: "/faqs" },
-      { label: "Chính sách thành viên", href: "/membership" },
-      { label: "Điều khoản sử dụng", href: "/terms" },
-      { label: "Bảo mật thông tin", href: "/privacy" },
+      { label: "Thông tin cá nhân", href: "/profile" },
+      { label: "Vé của tôi", href: "/profile/ticket" },
     ],
   },
 ];
@@ -50,7 +44,7 @@ const Footer = () => {
             </Link>
             <p className="mt-6 max-w-sm text-sm leading-7 text-[#9A9A9A]">
               Không gian đặt vé điện ảnh cho trải nghiệm nhanh, rõ ràng và cao
-              cấp: chọn phim, chọn suất, giữ ghế realtime và nhận vé QR trong
+              cấp: chọn phim, chọn suất, giữ ghế realtime và quản lý vé trong
               tài khoản.
             </p>
           </div>

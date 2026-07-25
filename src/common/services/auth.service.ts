@@ -44,6 +44,11 @@ const normalizeUser = (raw?: unknown): IUser | null => {
 };
 
 export const authService = {
+  googleLogin() {
+    const baseUrl =
+      import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000/api";
+    window.location.assign(`${baseUrl}/auth/google/redirect`);
+  },
   async register(payload: IRegisterPayload) {
     const body = {
       user_name: payload.userName,
@@ -125,5 +130,37 @@ export const authService = {
       payload,
     );
     return response.data;
+  },
+
+  async updateProfile(payload: {
+    userName: string;
+    phone?: string;
+    avatar?: string;
+  }) {
+    const response = await api.patch<TypeResponse<AuthResponseData>>(
+      "/auth/profile",
+      {
+        user_name: payload.userName,
+        phone: payload.phone || null,
+        avatar: payload.avatar || null,
+      },
+    );
+    return normalizeUser(response.data.data);
+  },
+
+  async changePassword(payload: {
+    currentPassword?: string;
+    password: string;
+    passwordConfirmation: string;
+  }) {
+    const response = await api.patch<TypeResponse<AuthResponseData>>(
+      "/auth/password",
+      {
+        current_password: payload.currentPassword,
+        password: payload.password,
+        password_confirmation: payload.passwordConfirmation,
+      },
+    );
+    return normalizeUser(response.data.data);
   },
 };
