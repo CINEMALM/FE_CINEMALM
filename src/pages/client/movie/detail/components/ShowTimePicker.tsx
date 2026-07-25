@@ -186,6 +186,14 @@ const ShowtimePicker = () => {
 
   const selectDate = (date: string) => {
     setSelectedDate(date);
+
+    const firstOpenShowtime = groupedShowtimes?.[date]?.find(
+      (showtime) => showtime.isBookingOpen,
+    );
+
+    if (firstOpenShowtime) {
+      selectShowtime(firstOpenShowtime, firstOpenShowtime.roomId);
+    }
   };
 
   const changeWeek = (nextPage: number) => {

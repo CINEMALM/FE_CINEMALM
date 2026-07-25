@@ -25,6 +25,7 @@ const menuItems = [
   { to: "/admin/categories", label: "Thể loại", icon: TagsOutlined },
   { to: "/admin/rooms", label: "Phòng & ghế", icon: DesktopOutlined },
   { to: "/admin/check-in", label: "Check-in QR", icon: QrcodeOutlined },
+  { to: "/admin/counter", label: "Counter Booking", icon: AppstoreOutlined },
 ];
 
 const AdminLayout = () => {
