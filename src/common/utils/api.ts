@@ -37,6 +37,23 @@ let csrfHeader = "X-CINEMALM-CSRF";
 let csrfRequest: Promise<string | null> | null = null;
 let isRefreshing = false;
 let refreshQueue: QueueItem[] = [];
+const accessTokenStorageKey = "cinemalm_access_token";
+
+export const getAccessToken = () =>
+  typeof window === "undefined"
+    ? null
+    : window.localStorage.getItem(accessTokenStorageKey);
+
+export const setAccessToken = (token?: string | null) => {
+  if (typeof window === "undefined") return;
+
+  if (token) {
+    window.localStorage.setItem(accessTokenStorageKey, token);
+    return;
+  }
+
+  window.localStorage.removeItem(accessTokenStorageKey);
+};
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000/api",
@@ -95,6 +112,12 @@ export const initCsrfToken = async () => {
 
 api.interceptors.request.use(
   async (config) => {
+    const accessToken = getAccessToken();
+
+    if (accessToken && !config.headers.has("Authorization")) {
+      config.headers.set("Authorization", `Bearer ${accessToken}`);
+    }
+
     if (
       isUnsafeMethod(config.method) &&
       !config.url?.includes("/auth/csrf-cookie")
@@ -152,14 +175,19 @@ api.interceptors.response.use(
     isRefreshing = true;
 
     try {
-      await api.post("/auth/refresh", undefined, {
+      const refreshResponse = await api.post("/auth/refresh", undefined, {
         _skipAuthRefresh: true,
       } as AxiosRequestConfig);
+      const refreshData = refreshResponse.data as
+        | { data?: { access_token?: string } }
+        | undefined;
+      setAccessToken(refreshData?.data?.access_token || null);
       resolveRefreshQueue();
       return api(originalRequest);
     } catch (refreshError) {
       resolveRefreshQueue(refreshError);
       clearCsrfToken();
+      setAccessToken(null);
       useAuthStore.getState().clearAuth();
       useAuthStore.getState().setOpenModal(true);
       return Promise.reject(refreshError);

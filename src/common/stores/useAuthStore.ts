@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
 import { useShallow } from "zustand/shallow";
 import type { IUser } from "../types/user";
+import { setAccessToken } from "../utils/api";
 
 interface AuthState {
   openModal: boolean;
@@ -26,7 +27,10 @@ export const useAuthStore = create<AuthState>()(
         user: null,
         isAuthenticated: false,
         setUser: (user) => set({ user, isAuthenticated: Boolean(user) }),
-        clearAuth: () => set({ user: null, isAuthenticated: false }),
+        clearAuth: () => {
+          setAccessToken(null);
+          set({ user: null, isAuthenticated: false });
+        },
         setOpenModal: (open) => set({ openModal: open }),
         requestLogin: (options) =>
           set({

@@ -1,4 +1,4 @@
-import api, { clearCsrfToken } from "../utils/api";
+import api, { clearCsrfToken, setAccessToken } from "../utils/api";
 import type {
   IForgotPasswordPayload,
   ILoginPayload,
@@ -13,6 +13,10 @@ import type { IUser } from "../types/user";
 
 type AuthResponseData = {
   user?: Partial<IUser> & Record<string, unknown>;
+  access_token?: string;
+  refresh_token?: string;
+  token_type?: string;
+  expires_in?: number;
 } & Record<string, unknown>;
 
 const normalizeUser = (raw?: unknown): IUser | null => {
@@ -32,7 +36,7 @@ const normalizeUser = (raw?: unknown): IUser | null => {
     email: String(source.email || ""),
     phone: String(source.phone || ""),
     isVerified: Boolean(source.isVerified ?? source.is_verified ?? false),
-    role: String(source.role || "customer").toLowerCase(),
+    role: String(source.role || "client").toLowerCase(),
     banned: (source.banned as IUser["banned"]) || {
       isBanned: false,
       description: "",
@@ -70,6 +74,7 @@ export const authService = {
       "/auth/login",
       payload,
     );
+    setAccessToken(response.data.data.access_token || null);
     return response.data;
   },
 
@@ -82,12 +87,14 @@ export const authService = {
   async refresh() {
     const response =
       await api.post<TypeResponse<AuthResponseData>>("/auth/refresh");
+    setAccessToken(response.data.data.access_token || null);
     return response.data;
   },
 
   async logout() {
     const response = await api.post<TypeResponse<null>>("/auth/logout");
     clearCsrfToken();
+    setAccessToken(null);
     return response.data;
   },
 
@@ -97,6 +104,7 @@ export const authService = {
       payload,
     );
     clearCsrfToken();
+    setAccessToken(null);
     return response.data;
   },
 

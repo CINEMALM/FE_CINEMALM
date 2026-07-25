@@ -57,7 +57,7 @@ const Footer = () => {
                 </h3>
                 <ul className="mt-5 space-y-3">
                   {group.links.map((link) => (
-                    <li key={link.href}>
+                    <li key={`${group.title}-${link.label}-${link.href}`}>
                       <Link
                         to={link.href}
                         className="footer-link text-sm transition-colors"

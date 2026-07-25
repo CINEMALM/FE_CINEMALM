@@ -1,14 +1,45 @@
+import {
+  lazy,
+  type ComponentType,
+  type LazyExoticComponent,
+  Suspense,
+} from "react";
 import type { RouteObject } from "react-router";
 import MainLayout from "../common/layouts/MainLayout";
-import HomePage from "../pages/client/home/Homepage";
-import Profile from "../pages/client/user/Profile";
 import ProfileLayout from "../common/layouts/ProfileLayout";
-import MyTicket from "../pages/client/user/MyTicket";
-import VerifyEmail from "../pages/client/auth/VerifyEmail";
-import ResetPassword from "../pages/client/auth/ResetPassword";
-import ListMovies from "../pages/client/movie/ListMovies";
-import DetailMovie from "../pages/client/movie/detail/DetailMovie";
-import ShowtimePicker from "../pages/client/movie/detail/components/ShowTimePicker";
+
+const HomePage = lazy(() => import("../pages/client/home/Homepage"));
+const Profile = lazy(() => import("../pages/client/user/Profile"));
+const MyTicket = lazy(() => import("../pages/client/user/MyTicket"));
+const VerifyEmail = lazy(() => import("../pages/client/auth/VerifyEmail"));
+const ResetPassword = lazy(() => import("../pages/client/auth/ResetPassword"));
+const ListMovies = lazy(() => import("../pages/client/movie/ListMovies"));
+const DetailMovie = lazy(
+  () => import("../pages/client/movie/detail/DetailMovie"),
+);
+const ShowtimePicker = lazy(
+  () => import("../pages/client/movie/detail/components/ShowTimePicker"),
+);
+const PaymentResult = lazy(
+  () => import("../pages/client/payment/PaymentResult"),
+);
+const TicketDetail = lazy(() => import("../pages/client/user/TicketDetail"));
+const GoogleAuthResult = lazy(
+  () => import("../pages/client/auth/GoogleAuthResult"),
+);
+
+const routeFallback = (
+  <div className="flex min-h-[320px] items-center justify-center text-sm text-gray-500">
+    Loading page...
+  </div>
+);
+
+const lazyElement = (Page: LazyExoticComponent<ComponentType>) => (
+  <Suspense fallback={routeFallback}>
+    <Page />
+  </Suspense>
+);
+
 export const MainRoutes: RouteObject[] = [
   {
     path: "",
@@ -16,42 +47,53 @@ export const MainRoutes: RouteObject[] = [
     children: [
       {
         index: true,
-        element: <HomePage />,
+        element: lazyElement(HomePage),
       },
       {
         path: "movie",
-        element: <ListMovies />,
+        element: lazyElement(ListMovies),
       },
       {
         path: "movie/:id",
-        element: <DetailMovie />,
+        element: lazyElement(DetailMovie),
         children: [
-          { index: true, element: <ShowtimePicker /> },
-          { path: ":showtimeId/:roomId", element: <ShowtimePicker /> },
+          { index: true, element: lazyElement(ShowtimePicker) },
+          { path: ":showtimeId/:roomId", element: lazyElement(ShowtimePicker) },
         ],
       },
       {
         path: "verify-email",
-        element: <VerifyEmail />,
+        element: lazyElement(VerifyEmail),
       },
       {
         path: "reset-password",
-        element: <ResetPassword />,
+        element: lazyElement(ResetPassword),
       },
+      { path: "auth/google/:result", element: lazyElement(GoogleAuthResult) },
       {
         path: "profile",
         element: <ProfileLayout />,
         children: [
           {
             index: true,
-            element: <Profile />,
+            element: lazyElement(Profile),
           },
           {
             path: "ticket",
-            element: <MyTicket />,
+            element: lazyElement(MyTicket),
+          },
+          {
+            path: "ticket/:ticketId",
+            element: lazyElement(TicketDetail),
           },
         ],
       },
+      {
+        path: "payment/result",
+        element: lazyElement(PaymentResult),
+      },
+      { path: "payment/success", element: lazyElement(PaymentResult) },
+      { path: "payment/failed", element: lazyElement(PaymentResult) },
     ],
   },
 ];
