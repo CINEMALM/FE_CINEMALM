@@ -84,3 +84,49 @@ export interface ISeatTypeTrendResponse {
     percentage: number;
   }[];
 }
+
+export interface IAdminDashboardOverview {
+  summary: {
+    movies: number;
+    rooms: number;
+    clients: number;
+    tickets_paid_total: number;
+    revenue_month: number;
+    revenue_previous_month: number;
+    revenue_growth_percent: number;
+    tickets_today: number;
+    showtimes_today: number;
+    upcoming_showtimes: number;
+    check_ins_today: number;
+    pending_payments: number;
+  };
+  today: {
+    date: string;
+    revenue: number;
+    tickets: number;
+    showtimes: number;
+    check_ins: number;
+  };
+  upcoming_showtimes: {
+    id: number | string;
+    movie_name?: string | null;
+    room_name?: string | null;
+    projection_format?: string | null;
+    start_time: string;
+    end_time: string;
+    status: string;
+    is_booking_open: boolean;
+    booking_closed_reason?: string | null;
+  }[];
+  top_movies: {
+    movie_name: string;
+    movie_poster?: string | null;
+    total_tickets: number;
+    revenue: number;
+  }[];
+  monthly_revenue: {
+    month: string;
+    revenue: number;
+    tickets: number;
+  }[];
+}

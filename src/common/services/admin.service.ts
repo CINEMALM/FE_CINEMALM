@@ -3,6 +3,8 @@ import type { IMovie } from "../types/movie";
 import type { IRoom } from "../types/room";
 import type { ISeat } from "../types/seat";
 import type { IShowtime } from "../types/showtime";
+import type { IAdminDashboardOverview } from "../types/stats";
+import type { ITicket } from "../types/ticket";
 import api from "../utils/api";
 
 interface LaravelPaginator<T> {
@@ -36,6 +38,7 @@ export interface CategoryPayload {
 export interface RoomPayload {
   name: string;
   description?: string;
+  supported_projection_formats?: IShowtime["projectionFormat"][];
   rows: number;
   cols: number;
   status?: boolean;
@@ -46,7 +49,7 @@ export interface MoviePayload {
   description?: string;
   poster: string;
   trailer?: string;
-  status_release: IMovie["statusRelease"];
+  status_release?: IMovie["statusRelease"];
   actors: string[];
   director: string;
   rating: number;
@@ -54,6 +57,7 @@ export interface MoviePayload {
   country?: string;
   language?: string;
   sub_language?: string;
+  available_projection_formats?: IShowtime["projectionFormat"][];
   duration: number;
   release_date: string;
   end_date: string;
@@ -65,6 +69,7 @@ export interface MoviePayload {
 export interface ShowtimePayload {
   movie_id: number;
   room_id: number;
+  projection_format: IShowtime["projectionFormat"];
   start_time: string;
   prices: {
     NORMAL: number;
@@ -86,6 +91,7 @@ interface BackendRoom {
   id: number;
   name: string;
   description?: string;
+  supported_projection_formats?: IShowtime["projectionFormat"][];
   capacity: number;
   rows: number;
   cols: number;
@@ -116,6 +122,7 @@ interface BackendMovie {
   country?: string;
   language?: string;
   sub_language?: string;
+  available_projection_formats?: IShowtime["projectionFormat"][];
   showtimes_count?: number;
 }
 
@@ -142,6 +149,7 @@ interface BackendShowtime {
   room_id: number;
   movie: BackendMovie;
   room: BackendRoom;
+  projection_format?: IShowtime["projectionFormat"];
   start_time: string;
   end_time: string;
   day_of_week: number;
@@ -149,6 +157,42 @@ interface BackendShowtime {
   booked_count?: number;
   prices?: BackendShowtimePrice[];
   created_at?: string;
+  updated_at: string;
+}
+
+interface BackendTicketItem {
+  id: number | string;
+  seat_id: number | string;
+  seat_label: string;
+  seat_type: string;
+  price: number | string;
+}
+
+interface BackendTicket {
+  id: number | string;
+  user_id?: number | string | null;
+  ticket_code: string;
+  showtime_id: number | string;
+  total_price: number | string;
+  payment_status: ITicket["paymentStatus"];
+  status: ITicket["status"];
+  customer_name?: string;
+  customer_email?: string;
+  customer_phone?: string;
+  movie_name: string;
+  movie_poster: string;
+  room_name: string;
+  projection_format?: ITicket["projectionFormat"];
+  start_time: string;
+  paid_at?: string | null;
+  used_at?: string | null;
+  expires_at?: string | null;
+  check_in_open_at?: string | null;
+  check_in_close_at?: string | null;
+  qr_code?: string | null;
+  cancel_description?: string | null;
+  items?: BackendTicketItem[];
+  created_at: string;
   updated_at: string;
 }
 
@@ -180,6 +224,7 @@ const normalizeRoom = (item: BackendRoom): IRoom => ({
   rows: item.rows,
   cols: item.cols,
   status: item.status,
+  supportedProjectionFormats: item.supported_projection_formats || ["2D"],
   seatCount: item.seats_count,
   showtimeCount: item.showtimes_count,
   createdAt: item.created_at,
@@ -220,6 +265,7 @@ const normalizeMovie = (item: BackendMovie): IMovie => ({
   country: item.country || "",
   language: item.language || "",
   subLanguage: item.sub_language || "",
+  availableProjectionFormats: item.available_projection_formats || ["2D"],
   showtimeCount: item.showtimes_count,
 });
 
@@ -238,6 +284,7 @@ const normalizeShowtime = (item: BackendShowtime): IShowtime => ({
   _id: String(item.id),
   movieId: normalizeMovie(item.movie),
   roomId: normalizeRoom(item.room),
+  projectionFormat: item.projection_format || "2D",
   startTime: item.start_time,
   endTime: item.end_time,
   dayOfWeek: item.day_of_week,
@@ -252,7 +299,48 @@ const normalizeShowtime = (item: BackendShowtime): IShowtime => ({
   updatedAt: item.updated_at,
 });
 
+const normalizeTicket = (ticket: BackendTicket): ITicket => ({
+  _id: String(ticket.id),
+  userId: ticket.user_id == null ? "" : String(ticket.user_id),
+  ticketCode: ticket.ticket_code,
+  showtimeId: String(ticket.showtime_id),
+  totalPrice: Number(ticket.total_price || 0),
+  paymentStatus: ticket.payment_status,
+  status: ticket.status,
+  customerName: ticket.customer_name || "",
+  customerEmail: ticket.customer_email || "",
+  customerPhone: ticket.customer_phone || "",
+  movieName: ticket.movie_name,
+  moviePoster: ticket.movie_poster,
+  roomName: ticket.room_name,
+  projectionFormat: ticket.projection_format || "2D",
+  startTime: ticket.start_time,
+  paidAt: ticket.paid_at,
+  usedAt: ticket.used_at,
+  expiresAt: ticket.expires_at,
+  checkInOpenAt: ticket.check_in_open_at,
+  checkInCloseAt: ticket.check_in_close_at,
+  qrCode: ticket.qr_code || ticket.ticket_code,
+  cancelDescription: ticket.cancel_description,
+  items: (ticket.items || []).map((item) => ({
+    _id: String(item.id),
+    seatId: String(item.seat_id),
+    seatLabel: item.seat_label,
+    type: item.seat_type,
+    price: Number(item.price),
+  })),
+  createdAt: ticket.created_at,
+  updatedAt: ticket.updated_at,
+});
+
 export const adminService = {
+  async dashboardOverview() {
+    const response = await api.get<ApiResponse<IAdminDashboardOverview>>(
+      "/admin/dashboard/overview",
+    );
+    return response.data.data;
+  },
+
   async categories(params?: Record<string, unknown>) {
     const response = await api.get<
       ApiResponse<LaravelPaginator<BackendCategory>>
@@ -315,12 +403,17 @@ export const adminService = {
     );
     return normalizeShowtime(response.data.data);
   },
-  async cancelShowtime(id: string, cancelDescription?: string) {
-    const response = await api.delete<ApiResponse<BackendShowtime>>(
-      `/admin/showtimes/${id}`,
-      { data: { cancel_description: cancelDescription } },
+  async publishShowtime(id: string) {
+    const response = await api.post<ApiResponse<BackendShowtime>>(
+      `/admin/showtimes/${id}/publish`,
     );
     return normalizeShowtime(response.data.data);
+  },
+  async tickets(params?: Record<string, unknown>) {
+    const response = await api.get<
+      ApiResponse<LaravelPaginator<BackendTicket>>
+    >("/admin/tickets", { params });
+    return normalizeList(response.data.data, normalizeTicket);
   },
 
   async rooms(params?: Record<string, unknown>) {
@@ -360,5 +453,58 @@ export const adminService = {
   },
   async updateSeat(id: string, payload: Partial<ISeat>) {
     await api.patch(`/admin/seats/${id}`, payload);
+  },
+
+  async checkInTicket(ticketCode: string) {
+    const response = await api.post<ApiResponse<BackendTicket>>(
+      "/admin/tickets/check-in",
+      { ticket_code: ticketCode },
+    );
+    return normalizeTicket(response.data.data);
+  },
+  async createCounterBooking(payload: {
+    showtime_id: number;
+    seat_ids: number[];
+    customer_name?: string;
+    customer_email?: string;
+    customer_phone?: string;
+    payment_method: "CASH";
+    amount_received: number;
+  }) {
+    const response = await api.post<ApiResponse<BackendTicket>>(
+      "/admin/counter/bookings",
+      payload,
+    );
+    return normalizeTicket(response.data.data);
+  },
+  async holdCounterSeats(payload: { showtime_id: number; seat_ids: number[] }) {
+    await api.post("/admin/counter/holds", payload);
+  },
+  async releaseCounterSeats(payload: {
+    showtime_id: number;
+    seat_ids: number[];
+  }) {
+    await api.post("/admin/counter/holds/release", payload);
+  },
+  async realtimeHealth() {
+    const response = await api.get<
+      ApiResponse<{
+        broadcast_connection: string;
+        is_enabled: boolean;
+        is_ready: boolean;
+        missing: string[];
+        reverb: {
+          host?: string | null;
+          port?: number | string | null;
+          scheme?: string | null;
+          app_id_configured: boolean;
+          key_configured: boolean;
+        };
+        seat_channel_pattern: string;
+        events: string[];
+      }>
+    >("/admin/realtime/health");
+
+    return response.data.data;
   },
 };

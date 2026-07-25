@@ -5,7 +5,10 @@ import {
   LogoutOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  QrcodeOutlined,
+  ScheduleOutlined,
   TagsOutlined,
+  CreditCardOutlined,
   VideoCameraOutlined,
 } from "@ant-design/icons";
 import { ConfigProvider, theme } from "antd";
@@ -17,8 +20,11 @@ import { useAuthSelector } from "../stores/useAuthStore";
 const menuItems = [
   { to: "/admin", label: "Tổng quan", icon: AppstoreOutlined, end: true },
   { to: "/admin/movies", label: "Phim", icon: VideoCameraOutlined },
+  { to: "/admin/showtimes", label: "Suất chiếu", icon: ScheduleOutlined },
+  { to: "/admin/tickets", label: "Vé", icon: CreditCardOutlined },
   { to: "/admin/categories", label: "Thể loại", icon: TagsOutlined },
   { to: "/admin/rooms", label: "Phòng & ghế", icon: DesktopOutlined },
+  { to: "/admin/check-in", label: "Check-in QR", icon: QrcodeOutlined },
 ];
 
 const AdminLayout = () => {
