@@ -50,6 +50,8 @@ const ModalSelectRoom = ({
                   _id: item.showtimeId || showtime._id,
                   roomId: item,
                   price: item.showtimePrice || showtime.price,
+                  projectionFormat:
+                    item.showtimeProjectionFormat || showtime.projectionFormat,
                 };
                 setOpen(false);
                 nav(
@@ -60,7 +62,10 @@ const ModalSelectRoom = ({
               }}
               className="min-h-11 w-full border border-white/10 px-3 text-sm font-bold text-[#F2F2F2] transition hover:border-[#DC0000] hover:bg-[#DC0000] hover:text-[#0A0A0A]"
             >
-              {item.name}
+              <span className="block">{item.name}</span>
+              <span className="block text-[10px] font-black uppercase opacity-70">
+                {item.showtimeProjectionFormat || showtime.projectionFormat}
+              </span>
             </button>
           ))}
         </div>

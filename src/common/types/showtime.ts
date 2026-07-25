@@ -15,16 +15,28 @@ export interface IPriceShowTime {
 }
 
 export type IShowtimeStatus =
+  | "draft"
   | "scheduled"
   | "sold_out"
   | "in_progress"
   | "ended"
   | "cancelled";
 
+export type IShowtimeFormat = "2D" | "3D" | "IMAX";
+
+export type IBookingClosedReason =
+  | "NOT_SCHEDULED"
+  | "BOOKING_CUTOFF_REACHED"
+  | "STARTED"
+  | "ENDED"
+  | "SOLD_OUT"
+  | "CANCELLED";
+
 export interface IShowtime {
   _id: string;
   movieId: IMovie;
   roomId: IRoom;
+  projectionFormat: IShowtimeFormat;
   startTime: string;
   dayOfWeek: number;
   endTime: string;
@@ -36,6 +48,10 @@ export interface IShowtime {
   externalRoom?: IRoom[];
   bookedSeat?: number;
   bookedCount?: number;
+  bookingCloseAt?: string | null;
+  bookingClosedReason?: IBookingClosedReason | null;
+  isBookingOpen?: boolean;
+  isSoldOut?: boolean;
 }
 
 export interface IWeekdayShowtime {

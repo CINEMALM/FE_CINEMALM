@@ -1,5 +1,5 @@
 import type { ICategory } from "./category";
-import type { IShowtime } from "./showtime";
+import type { IShowtime, IShowtimeFormat } from "./showtime";
 
 export interface IMovie {
   _id: string;
@@ -21,6 +21,7 @@ export interface IMovie {
   country: string;
   language: string;
   subLanguage: string;
+  availableProjectionFormats?: IShowtimeFormat[];
   createdAt?: string;
   updatedAt?: string;
   showtimeCount?: number;

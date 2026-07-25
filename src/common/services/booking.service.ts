@@ -72,9 +72,13 @@ interface BackendTicket {
   movie_name: string;
   movie_poster: string;
   room_name: string;
+  projection_format?: ITicket["projectionFormat"];
   start_time: string;
   paid_at?: string | null;
   expires_at?: string | null;
+  check_in_open_at?: string | null;
+  check_in_close_at?: string | null;
+  qr_code?: string | null;
   cancel_description?: string | null;
   items?: BackendTicketItem[];
   created_at: string;
@@ -125,9 +129,13 @@ const normalizeTicket = (ticket: BackendTicket): ITicket => ({
   movieName: ticket.movie_name,
   moviePoster: ticket.movie_poster,
   roomName: ticket.room_name,
+  projectionFormat: ticket.projection_format || "2D",
   startTime: ticket.start_time,
   paidAt: ticket.paid_at,
   expiresAt: ticket.expires_at,
+  checkInOpenAt: ticket.check_in_open_at,
+  checkInCloseAt: ticket.check_in_close_at,
+  qrCode: ticket.qr_code || ticket.ticket_code,
   cancelDescription: ticket.cancel_description,
   items: (ticket.items || []).map((item) => ({
     _id: String(item.id),
@@ -162,6 +170,19 @@ export const holdSeats = async (showtimeId: string, seatIds: string[]) => {
       server_time: string;
     }>
   >("/bookings/hold", {
+    showtime_id: Number(showtimeId),
+    seat_ids: seatIds.map(Number),
+  });
+  return response.data.data;
+};
+
+export const releaseSeats = async (showtimeId: string, seatIds: string[]) => {
+  const response = await api.post<
+    ApiResponse<{
+      released_seat_ids: Array<number | string>;
+      server_time: string;
+    }>
+  >("/bookings/release", {
     showtime_id: Number(showtimeId),
     seat_ids: seatIds.map(Number),
   });
@@ -224,4 +245,62 @@ export const createVnpayPayment = async (ticketId: string) => {
     { ticket_id: Number(ticketId) },
   );
   return response.data.data.payment_url;
+};
+
+export interface PaymentStatusSnapshot {
+  paymentCode: string;
+  paymentStatus: "pending" | "success" | "failed" | "expired" | "refunded";
+  status: "processing" | "success" | "failed";
+  ticketId: string;
+  ticketCode?: string | null;
+  ticketStatus?: ITicket["status"] | null;
+  ticketPaymentStatus?: ITicket["paymentStatus"] | null;
+  amount: number;
+  currency: string;
+  paidAt?: string | null;
+  expiredAt?: string | null;
+}
+
+interface BackendPaymentStatusSnapshot {
+  payment_code: string;
+  payment_status: PaymentStatusSnapshot["paymentStatus"];
+  status: PaymentStatusSnapshot["status"];
+  ticket_id: number | string;
+  ticket_code?: string | null;
+  ticket_status?: ITicket["status"] | null;
+  ticket_payment_status?: ITicket["paymentStatus"] | null;
+  amount: number | string;
+  currency: string;
+  paid_at?: string | null;
+  expired_at?: string | null;
+}
+
+export const getPaymentStatus = async (
+  paymentCode: string,
+  ticketId?: string | null,
+): Promise<PaymentStatusSnapshot> => {
+  const response = await api.get<ApiResponse<BackendPaymentStatusSnapshot>>(
+    "/payments/status",
+    {
+      params: {
+        payment_code: paymentCode,
+        ticket_id: ticketId || undefined,
+      },
+    },
+  );
+  const data = response.data.data;
+
+  return {
+    paymentCode: data.payment_code,
+    paymentStatus: data.payment_status,
+    status: data.status,
+    ticketId: String(data.ticket_id),
+    ticketCode: data.ticket_code,
+    ticketStatus: data.ticket_status,
+    ticketPaymentStatus: data.ticket_payment_status,
+    amount: Number(data.amount || 0),
+    currency: data.currency,
+    paidAt: data.paid_at,
+    expiredAt: data.expired_at,
+  };
 };

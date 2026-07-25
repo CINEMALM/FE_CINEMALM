@@ -12,17 +12,38 @@ import { QUERYKEY } from "../../../../../common/constants/queryKey";
 import { getShowtimeWeekday } from "../../../../../common/services/showtime.service";
 import { useCheckoutSelector } from "../../../../../common/stores/useCheckoutStore";
 import type { IRoom } from "../../../../../common/types/room";
-import type { IShowtime } from "../../../../../common/types/showtime";
+import type {
+  IBookingClosedReason,
+  IShowtime,
+} from "../../../../../common/types/showtime";
 import GuideSeat from "./GuideSeat";
 import ModalSelectRoom from "./ModalSelectRoom";
 
 const PAGE_SIZE = 7;
-const showtimeButtonClass = (isSelected: boolean) =>
-  `inline-flex min-h-10 min-w-20 items-center justify-center border px-3 text-sm font-bold transition ${
+const showtimeButtonClass = (isSelected: boolean, isDisabled = false) =>
+  `inline-flex min-h-10 min-w-24 flex-col items-center justify-center border px-3 py-2 text-sm font-bold leading-tight transition ${
+    isDisabled
+      ? "cursor-not-allowed border-white/5 bg-[#101010] text-[#666]"
+      : ""
+  } ${
     isSelected
       ? "border-[#DC0000] bg-[#DC0000] text-[#0A0A0A]"
-      : "border-white/10 hover:border-[#DC0000] hover:bg-[#DC0000] hover:text-[#0A0A0A]"
+      : isDisabled
+        ? ""
+        : "border-white/10 hover:border-[#DC0000] hover:bg-[#DC0000] hover:text-[#0A0A0A]"
   }`;
+
+const bookingClosedLabels: Record<IBookingClosedReason, string> = {
+  NOT_SCHEDULED: "Chưa mở",
+  BOOKING_CUTOFF_REACHED: "Đóng bán",
+  STARTED: "Đã chiếu",
+  ENDED: "Kết thúc",
+  SOLD_OUT: "Hết ghế",
+  CANCELLED: "Đã hủy",
+};
+
+const bookingClosedLabel = (reason?: IBookingClosedReason | null) =>
+  reason ? bookingClosedLabels[reason] || "Đóng bán" : "Đóng bán";
 
 const ShowtimePicker = () => {
   const navigate = useNavigate();
@@ -45,11 +66,7 @@ const ShowtimePicker = () => {
         limit: PAGE_SIZE,
         page,
         groupTime: true,
-        startTimeFrom: dayjs()
-          .add(1, "hour")
-          .second(0)
-          .millisecond(0)
-          .toISOString(),
+        startTimeFrom: dayjs().startOf("day").toISOString(),
       }),
     enabled: Boolean(id),
   });
@@ -89,6 +106,10 @@ const ShowtimePicker = () => {
 
   const selectShowtime = useCallback(
     (showtime: IShowtime, room: IRoom) => {
+      if (!showtime.isBookingOpen) {
+        return;
+      }
+
       const date = dayjs(showtime.startTime).format("YYYY-MM-DD");
       setSelectionByDate((current) => {
         const selected = current[date];
@@ -139,12 +160,17 @@ const ShowtimePicker = () => {
         _id: routeRoom.showtimeId || routeShowtime._id,
         roomId: routeRoom,
         price: routeRoom.showtimePrice || routeShowtime.price,
+        projectionFormat:
+          routeRoom.showtimeProjectionFormat || routeShowtime.projectionFormat,
       };
       selectShowtime(actualShowtime, routeRoom);
       return;
     }
 
-    selectShowtime(showtimes[0], showtimes[0].roomId);
+    const firstOpenShowtime = showtimes.find((item) => item.isBookingOpen);
+    if (firstOpenShowtime) {
+      selectShowtime(firstOpenShowtime, firstOpenShowtime.roomId);
+    }
   }, [
     roomId,
     selectedDate,
@@ -259,6 +285,7 @@ const ShowtimePicker = () => {
                           room.showtimeId === selectedShowtimeForDate?._id,
                       ),
                   );
+                  const isClosed = !showtime.isBookingOpen;
 
                   return (showtime.externalRoom?.length || 0) > 1 ? (
                     <ModalSelectRoom
@@ -270,9 +297,20 @@ const ShowtimePicker = () => {
                       <button
                         type="button"
                         aria-pressed={isSelected}
-                        className={showtimeButtonClass(isSelected)}
+                        disabled={isClosed}
+                        title={
+                          isClosed
+                            ? bookingClosedLabel(showtime.bookingClosedReason)
+                            : undefined
+                        }
+                        className={showtimeButtonClass(isSelected, isClosed)}
                       >
-                        {dayjs(showtime.startTime).format("HH:mm")}
+                        <span>{dayjs(showtime.startTime).format("HH:mm")}</span>
+                        <span className="text-[10px] font-black uppercase opacity-80">
+                          {isClosed
+                            ? bookingClosedLabel(showtime.bookingClosedReason)
+                            : showtime.projectionFormat}
+                        </span>
                       </button>
                     </ModalSelectRoom>
                   ) : (
@@ -280,12 +318,23 @@ const ShowtimePicker = () => {
                       key={showtime._id}
                       type="button"
                       aria-pressed={isSelected}
+                      disabled={isClosed}
+                      title={
+                        isClosed
+                          ? bookingClosedLabel(showtime.bookingClosedReason)
+                          : undefined
+                      }
                       onClick={() =>
                         handleSelectShowtime(showtime, showtime.roomId as IRoom)
                       }
-                      className={showtimeButtonClass(isSelected)}
+                      className={showtimeButtonClass(isSelected, isClosed)}
                     >
-                      {dayjs(showtime.startTime).format("HH:mm")}
+                      <span>{dayjs(showtime.startTime).format("HH:mm")}</span>
+                      <span className="text-[10px] font-black uppercase opacity-80">
+                        {isClosed
+                          ? bookingClosedLabel(showtime.bookingClosedReason)
+                          : showtime.projectionFormat}
+                      </span>
                     </button>
                   );
                 })}

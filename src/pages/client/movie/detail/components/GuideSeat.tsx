@@ -9,7 +9,9 @@ import {
   createVnpayPayment,
   getShowtimeSeats,
   holdSeats,
+  releaseSeats,
 } from "../../../../../common/services/booking.service";
+import { subscribeShowtimeSeatEvents } from "../../../../../common/services/realtime.service";
 import { useAuthSelector } from "../../../../../common/stores/useAuthStore";
 import { useCheckoutSelector } from "../../../../../common/stores/useCheckoutStore";
 import type { ISeatStatus } from "../../../../../common/types/seat";
@@ -35,6 +37,57 @@ const GuideSeat = () => {
     enabled: Boolean(showtimeId),
     refetchOnWindowFocus: true,
   });
+
+  useEffect(() => {
+    if (!showtimeId) return;
+
+    return subscribeShowtimeSeatEvents(showtimeId, (event) => {
+      queryClient.setQueryData<Awaited<ReturnType<typeof getShowtimeSeats>>>(
+        ["SHOWTIME_SEATS", showtimeId],
+        (current) => {
+          if (!current) return current;
+
+          const eventSeats = new Map(
+            event.seats.map((seat) => [
+              String(seat.seat_id),
+              {
+                bookingStatus: seat.status,
+                userId: seat.user_id == null ? null : String(seat.user_id),
+                heldUntil: seat.held_until,
+              },
+            ]),
+          );
+
+          return {
+            ...current,
+            layout: current.layout.map((row) =>
+              row.map((seat) => {
+                const realtimeSeat = eventSeats.get(seat._id);
+                return realtimeSeat ? { ...seat, ...realtimeSeat } : seat;
+              }),
+            ),
+          };
+        },
+      );
+
+      setSelectedSeatIds((current) => {
+        const blockedSeatIds = event.seats
+          .filter((seat) => {
+            const seatUserId =
+              seat.user_id == null ? null : String(seat.user_id);
+            return seat.status !== "AVAILABLE" && seatUserId !== user?._id;
+          })
+          .map((seat) => String(seat.seat_id));
+
+        if (!blockedSeatIds.some((seatId) => current.includes(seatId))) {
+          return current;
+        }
+
+        setNotice("Một số ghế bạn đang chọn vừa được cập nhật bởi người khác.");
+        return current.filter((seatId) => !blockedSeatIds.includes(seatId));
+      });
+    });
+  }, [queryClient, showtimeId, user?._id]);
 
   useEffect(() => {
     setSelectedSeatIds([]);
@@ -72,11 +125,11 @@ const GuideSeat = () => {
     (total, seat) => total + Number(priceByType[seat.type] || 0),
     0,
   );
+  const selectedShowtimePrices = showtime?.price || [];
 
   const checkout = useMutation({
     mutationFn: async () => {
       if (!showtimeId || !selectedSeatIds.length) return;
-      await holdSeats(showtimeId, selectedSeatIds);
       const ticket = await createBooking({
         showtimeId,
         seatIds: selectedSeatIds,
@@ -103,6 +156,48 @@ const GuideSeat = () => {
     },
   });
 
+  const holdSelection = useMutation({
+    mutationFn: (seatIds: string[]) => {
+      if (!showtimeId) throw new Error("Missing showtime");
+      return holdSeats(showtimeId, seatIds);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["SHOWTIME_SEATS", showtimeId],
+      });
+    },
+    onError: async (error) => {
+      const response = axios.isAxiosError(error) ? error.response?.data : null;
+      const errors = response?.errors as Record<string, string[]> | undefined;
+      setNotice(
+        (errors && Object.values(errors).flat()[0]) ||
+          response?.message ||
+          "Không thể giữ ghế. Vui lòng chọn lại.",
+      );
+      setSelectedSeatIds([]);
+      await queryClient.invalidateQueries({
+        queryKey: ["SHOWTIME_SEATS", showtimeId],
+      });
+    },
+  });
+
+  const releaseSelection = useMutation({
+    mutationFn: (seatIds: string[]) => {
+      if (!showtimeId) throw new Error("Missing showtime");
+      return releaseSeats(showtimeId, seatIds);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["SHOWTIME_SEATS", showtimeId],
+      });
+    },
+    onError: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["SHOWTIME_SEATS", showtimeId],
+      });
+    },
+  });
+
   useEffect(() => {
     setInformation({
       seat: selectedSeats.map((seat) => ({
@@ -114,17 +209,57 @@ const GuideSeat = () => {
   }, [priceByType, selectedSeats, setInformation, totalPrice]);
 
   const toggleSeat = (seat: ISeatStatus) => {
-    if (!seat.status || seat.bookingStatus !== "AVAILABLE") return;
+    if (holdSelection.isPending || releaseSelection.isPending) return;
+    if (!isAuthenticated) {
+      requestLogin();
+      return;
+    }
+    if (
+      !seat.status ||
+      (seat.bookingStatus !== "AVAILABLE" &&
+        !(seat.bookingStatus === "HOLD" && seat.userId === user?._id))
+    ) {
+      return;
+    }
     setNotice("");
+    const isAlreadySelected = selectedSeatIds.includes(seat._id);
+
+    if (isAlreadySelected) {
+      releaseSelection.mutate([seat._id], {
+        onSuccess: () => {
+          setSelectedSeatIds((current) =>
+            current.filter((seatId) => seatId !== seat._id),
+          );
+        },
+      });
+      return;
+    }
+
+    if (selectedSeatIds.length >= MAX_SELECTED_SEATS) {
+      setNotice(`Ban chi co the chon toi da ${MAX_SELECTED_SEATS} ghe.`);
+      return;
+    }
+
+    const nextSeatIds = [...selectedSeatIds, seat._id];
+    holdSelection.mutate(nextSeatIds, {
+      onSuccess: () => {
+        setSelectedSeatIds(nextSeatIds);
+      },
+    });
+    return;
+
     setSelectedSeatIds((current) => {
       if (current.includes(seat._id)) {
+        releaseSelection.mutate([seat._id]);
         return current.filter((seatId) => seatId !== seat._id);
       }
       if (current.length >= MAX_SELECTED_SEATS) {
         setNotice(`Bạn chỉ có thể chọn tối đa ${MAX_SELECTED_SEATS} ghế.`);
         return current;
       }
-      return [...current, seat._id];
+      const nextSeatIds = [...current, seat._id];
+      holdSelection.mutate(nextSeatIds);
+      return nextSeatIds;
     });
   };
 
@@ -209,7 +344,12 @@ const GuideSeat = () => {
                       {row.map((seat) => {
                         const isSelected = selectedSeatIds.includes(seat._id);
                         const isBlocked =
-                          !seat.status || seat.bookingStatus !== "AVAILABLE";
+                          !seat.status ||
+                          (seat.bookingStatus !== "AVAILABLE" &&
+                            !(
+                              seat.bookingStatus === "HOLD" &&
+                              seat.userId === user?._id
+                            ));
                         return (
                           <button
                             key={seat._id}
@@ -234,6 +374,43 @@ const GuideSeat = () => {
                 </div>
               </div>
             </div>
+
+            {showtime && (
+              <div className="mt-6 border-t border-white/10 pt-5">
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#9A9A9A]">
+                  Suất đang chọn
+                </p>
+
+                <div className="mt-3 grid gap-3 border border-white/10 bg-[#0A0A0A] p-4 text-sm text-[#B8B8B8] sm:grid-cols-2">
+                  <div>
+                    <span className="block text-[10px] font-black uppercase tracking-[0.14em] text-[#666]">
+                      Định dạng
+                    </span>
+
+                    <span className="mt-1 inline-flex border border-[#DC0000]/50 bg-[#DC0000]/15 px-3 py-1 text-xs font-black uppercase text-[#F2F2F2]">
+                      {showtime.projectionFormat}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="block text-[10px] font-black uppercase tracking-[0.14em] text-[#666]">
+                      Bảng giá suất này
+                    </span>
+
+                    <div className="mt-1 flex flex-wrap gap-2">
+                      {selectedShowtimePrices.map((price) => (
+                        <span
+                          key={price.seatType}
+                          className="border border-white/10 px-2 py-1 text-xs font-bold text-[#F2F2F2]"
+                        >
+                          {price.seatType}: {formatCurrency(price.value)}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="mt-6 border-t border-white/10 pt-5">
               <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#9A9A9A]">
