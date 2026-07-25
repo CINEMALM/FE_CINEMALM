@@ -1,163 +1,162 @@
-import { Pagination, Table, Tag, type TableProps } from "antd";
+import { useQuery } from "@tanstack/react-query";
+import { Empty, Pagination, Select, Table, Tag } from "antd";
 import dayjs from "dayjs";
+import { useState } from "react";
 import { useNavigate } from "react-router";
-import {
-  TICKET_STATUS,
-  TICKET_STATUS_COLOR,
-} from "../../../common/constants/ticket";
-import type { ITicket } from "../../../common/types/ticket";
+import { getBookings } from "../../../common/services/booking.service";
+import { useAuthSelector } from "../../../common/stores/useAuthStore";
+import type {
+  ITicket,
+  PaymentStatus,
+  TicketStatus,
+} from "../../../common/types/ticket";
 import { formatCurrency } from "../../../common/utils";
 
-const mockTickets: ITicket[] = [
-  {
-    _id: "ticket-1",
-    userId: "user-1",
-    ticketId: "T001",
-    showtimeId: "show-1",
-    status: "PENDING",
-    customerInfo: {
-      userName: "Nguyễn Văn A",
-      phone: "0909123456",
-    },
-    movieId: "movie-1",
-    movieName: "Dune: Part Two",
-    roomId: "room-1",
-    roomName: "Phòng 1",
-    items: [
-      {
-        seatId: "seat-1",
-        seatLabel: "A1",
-        price: 90000,
-        type: "VIP",
-      },
-    ],
-    startTime: "2026-07-08T19:30:00.000Z",
-    qrCode: "qr-1",
-    totalPrice: 90000,
-    isPaid: true,
-    createdAt: "2026-07-07T10:00:00.000Z",
-    updatedAt: "2026-07-07T10:00:00.000Z",
-  },
-  {
-    _id: "ticket-2",
-    userId: "user-1",
-    ticketId: "T002",
-    showtimeId: "show-2",
-    status: "CONFIRMED",
-    customerInfo: {
-      userName: "Nguyễn Văn A",
-      phone: "0909123456",
-    },
-    movieId: "movie-2",
-    movieName: "Inside Out 2",
-    roomId: "room-2",
-    roomName: "Phòng 2",
-    items: [
-      {
-        seatId: "seat-2",
-        seatLabel: "B3",
-        price: 80000,
-        type: "Thường",
-      },
-      {
-        seatId: "seat-3",
-        seatLabel: "B4",
-        price: 80000,
-        type: "Thường",
-      },
-    ],
-    startTime: "2026-07-09T20:00:00.000Z",
-    qrCode: "qr-2",
-    totalPrice: 160000,
-    isPaid: true,
-    createdAt: "2026-07-06T15:30:00.000Z",
-    updatedAt: "2026-07-06T15:30:00.000Z",
-  },
-];
+const statusMeta: Record<TicketStatus, { label: string; color: string }> = {
+  pending: { label: "Chờ thanh toán", color: "gold" },
+  confirmed: { label: "Đã xác nhận", color: "green" },
+  cancelled: { label: "Đã hủy", color: "red" },
+  used: { label: "Đã check-in", color: "blue" },
+};
+
+const paymentStatusMeta: Record<
+  PaymentStatus,
+  { label: string; color: string }
+> = {
+  pending: { label: "Chờ thanh toán", color: "gold" },
+  paid: { label: "Đã thanh toán", color: "green" },
+  expired: { label: "Đã hết hạn", color: "red" },
+  cancelled: { label: "Đã hủy", color: "red" },
+  failed: { label: "Thanh toán lỗi", color: "red" },
+  refunded: { label: "Hoàn tiền/chờ xử lý", color: "blue" },
+};
+
+const isTicketPayable = (ticket: ITicket) =>
+  ticket.status === "pending" &&
+  ticket.paymentStatus === "pending" &&
+  (!ticket.expiresAt || dayjs(ticket.expiresAt).isAfter(dayjs()));
 
 const MyTicket = () => {
-  const columns = [
-    {
-      title: <p style={{ whiteSpace: "nowrap", margin: 0 }}>Ngày giao dịch</p>,
-      dataIndex: "createdAt",
-      key: "createdAt",
-      width: 350,
-      render: (createdAt: string) => (
-        <p className="line-clamp-1">
-          {dayjs(createdAt).format("HH:mm, [Ngày] DD [Tháng] MM [Năm] YYYY")}
-        </p>
-      ),
-    },
-    {
-      title: <p style={{ whiteSpace: "nowrap", margin: 0 }}>Tên phim</p>,
-      dataIndex: "movieName",
-      key: "movieName",
-      render: (movieName: string) => (
-        <p className="font-semibold line-clamp-1">{movieName}</p>
-      ),
-    },
-    {
-      title: <p style={{ whiteSpace: "nowrap", margin: 0 }}>Số vé</p>,
-      dataIndex: "items",
-      key: "items",
-      render: (items: ITicket["items"]) => (
-        <p className="font-semibold line-clamp-1">{items.length}</p>
-      ),
-    },
-    {
-      title: <p style={{ whiteSpace: "nowrap", margin: 0 }}>Trạng thái vé</p>,
-      dataIndex: "status",
-      key: "status",
-      filters: [
-        { text: "Đã mua", value: "PENDING" },
-        { text: "Đã sử dụng", value: "CONFIRMED" },
-        { text: "Đã bị huỷ", value: "CANCELLED" },
-      ],
-      render: (status: string) => (
-        <Tag color={TICKET_STATUS_COLOR[status]} className="font-semibold!">
-          {TICKET_STATUS[status]}
-        </Tag>
-      ),
-    },
-    {
-      title: <p style={{ whiteSpace: "nowrap", margin: 0 }}>Số tiền</p>,
-      dataIndex: "totalPrice",
-      key: "totalPrice",
-      render: (totalPrice: number) => (
-        <p className="font-semibold line-clamp-1">
-          {formatCurrency(totalPrice)}
-        </p>
-      ),
-    },
-  ];
-
   const navigate = useNavigate();
+  const [page, setPage] = useState(1);
+  const [status, setStatus] = useState<TicketStatus | undefined>();
+  const isAuthenticated = useAuthSelector((state) => state.isAuthenticated);
 
-  const onChange: TableProps<ITicket>["onChange"] = () => {};
+  const tickets = useQuery({
+    queryKey: ["MY_BOOKINGS", page, status],
+    queryFn: () =>
+      getBookings({ page, per_page: 8, status: status || undefined }),
+    enabled: isAuthenticated,
+  });
 
   return (
-    <div className="mt-12 max-w-7xl xl:mx-auto mx-6">
-      <Table<ITicket>
-        columns={columns}
-        bordered
-        dataSource={mockTickets}
-        onChange={onChange}
-        pagination={false}
-        onRow={(record) => ({
-          onClick: () => navigate(`/ticket/${record._id}`),
-          style: { cursor: "pointer" },
-        })}
-      />
-
-      <div className="mt-4">
-        <Pagination
-          align="end"
-          current={1}
-          pageSize={5}
-          total={mockTickets.length}
-          onChange={() => {}}
+    <div className="mx-4 mt-10 max-w-7xl sm:mx-6 xl:mx-auto">
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-[#DC0000]">
+            My bookings
+          </p>
+          <h1 className="mt-2 font-display text-3xl font-bold">Vé của tôi</h1>
+        </div>
+        <Select
+          allowClear
+          className="w-full sm:w-48"
+          placeholder="Tất cả trạng thái"
+          value={status}
+          onChange={(value) => {
+            setPage(1);
+            setStatus(value);
+          }}
+          options={Object.entries(statusMeta).map(([value, item]) => ({
+            value,
+            label: item.label,
+          }))}
         />
       </div>
+
+      <div className="overflow-hidden border border-white/10 bg-[#141414]">
+        <Table<ITicket>
+          rowKey="_id"
+          loading={tickets.isLoading}
+          dataSource={tickets.data?.items}
+          pagination={false}
+          scroll={{ x: 1100 }}
+          locale={{ emptyText: <Empty description="Chưa có booking" /> }}
+          onRow={(record) => ({
+            onClick: () => navigate(`/profile/ticket/${record._id}`),
+            className: "cursor-pointer",
+          })}
+          columns={[
+            { title: "Mã vé", dataIndex: "ticketCode", width: 170 },
+            { title: "Phim", dataIndex: "movieName", width: 220 },
+            { title: "Phòng", dataIndex: "roomName", width: 120 },
+            { title: "Định dạng", dataIndex: "projectionFormat", width: 110 },
+            {
+              title: "Suất chiếu",
+              dataIndex: "startTime",
+              width: 180,
+              render: (value: string) =>
+                dayjs(value).format("HH:mm DD/MM/YYYY"),
+            },
+            {
+              title: "Ghế",
+              dataIndex: "items",
+              width: 130,
+              render: (items: ITicket["items"]) =>
+                items.map((item) => item.seatLabel).join(", ") || "—",
+            },
+            {
+              title: "Trạng thái vé",
+              dataIndex: "status",
+              width: 150,
+              render: (value: TicketStatus, record) => (
+                <Tag color={statusMeta[value].color}>
+                  {!isTicketPayable(record) && value === "pending"
+                    ? "Hết hạn"
+                    : statusMeta[value].label}
+                </Tag>
+              ),
+            },
+            {
+              title: "Thanh toán",
+              dataIndex: "paymentStatus",
+              width: 150,
+              render: (value: PaymentStatus) => (
+                <Tag color={paymentStatusMeta[value].color}>
+                  {paymentStatusMeta[value].label}
+                </Tag>
+              ),
+            },
+            {
+              title: "Hạn thanh toán",
+              dataIndex: "expiresAt",
+              width: 180,
+              render: (value: string | null | undefined, record) => {
+                if (record.status !== "pending" || !value) return "—";
+
+                return dayjs(value).isAfter(dayjs())
+                  ? dayjs(value).format("HH:mm DD/MM/YYYY")
+                  : "Đã hết hạn";
+              },
+            },
+            {
+              title: "Tổng tiền",
+              dataIndex: "totalPrice",
+              width: 140,
+              render: (value: number) => formatCurrency(value),
+            },
+          ]}
+        />
+      </div>
+
+      <Pagination
+        className="mt-5"
+        align="end"
+        current={page}
+        pageSize={tickets.data?.pageSize || 8}
+        total={tickets.data?.total || 0}
+        onChange={setPage}
+      />
     </div>
   );
 };
