@@ -13,6 +13,7 @@ import {
   InputNumber,
   Modal,
   Pagination,
+  Select,
   Switch,
   Table,
 } from "antd";
@@ -23,6 +24,12 @@ import {
   type RoomPayload,
 } from "../../common/services/admin.service";
 import type { IRoom } from "../../common/types/room";
+
+const projectionFormatOptions = [
+  { value: "2D", label: "2D" },
+  { value: "3D", label: "3D" },
+  { value: "IMAX", label: "IMAX" },
+];
 
 const AdminRooms = () => {
   const [page, setPage] = useState(1);
@@ -60,11 +67,21 @@ const AdminRooms = () => {
         ? {
             name: room.name,
             description: room.description,
+            supported_projection_formats: room.supportedProjectionFormats || [
+              "2D",
+            ],
             rows: room.rows,
             cols: room.cols,
             status: room.status,
           }
-        : { name: "", description: "", rows: 8, cols: 12, status: true },
+        : {
+            name: "",
+            description: "",
+            supported_projection_formats: ["2D"],
+            rows: 8,
+            cols: 12,
+            status: true,
+          },
     );
     setOpen(true);
   };
@@ -109,6 +126,12 @@ const AdminRooms = () => {
             { title: "Hàng", dataIndex: "rows", width: 80 },
             { title: "Cột", dataIndex: "cols", width: 80 },
             { title: "Sức chứa", dataIndex: "capacity", width: 110 },
+            {
+              title: "Định dạng",
+              dataIndex: "supportedProjectionFormats",
+              width: 150,
+              render: (value: string[] = []) => value.join(", "),
+            },
             {
               title: "Số ghế",
               dataIndex: "seatCount",
@@ -174,6 +197,13 @@ const AdminRooms = () => {
           </Form.Item>
           <Form.Item name="description" label="Mô tả">
             <Input.TextArea rows={3} />
+          </Form.Item>
+          <Form.Item
+            name="supported_projection_formats"
+            label="Định dạng phòng hỗ trợ"
+            rules={[{ required: true }]}
+          >
+            <Select mode="multiple" options={projectionFormatOptions} />
           </Form.Item>
           <div className="grid grid-cols-2 gap-3">
             <Form.Item name="rows" label="Số hàng" rules={[{ required: true }]}>

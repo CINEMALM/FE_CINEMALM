@@ -1,4 +1,9 @@
-import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
+import {
+  CheckCircleOutlined,
+  EditOutlined,
+  EyeOutlined,
+  PlusOutlined,
+} from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Alert,
@@ -9,12 +14,15 @@ import {
   Modal,
   Pagination,
   Select,
+  Space,
   Table,
+  Tag,
+  Tooltip,
   message,
 } from "antd";
 import type { AxiosError } from "axios";
 import dayjs from "dayjs";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   adminService,
   type ShowtimePayload,
@@ -26,6 +34,7 @@ import { formatCurrency } from "../../common/utils";
 interface ShowtimeFormValues {
   movieId: number;
   roomId: number;
+  projectionFormat: IShowtime["projectionFormat"];
   startTime: dayjs.Dayjs;
   normalPrice: number;
   vipPrice: number;
@@ -42,18 +51,48 @@ const showtimeErrorLabels: Record<string, string> = {
     "Phòng đã có suất chiếu trùng khung giờ.",
   "Khong the tao/cap nhat suat chieu trong qua khu.":
     "Không thể tạo hoặc cập nhật suất chiếu trong quá khứ.",
+  "Suat chieu da len lich. Muon thay doi phim, phong, dinh dang, thoi gian hoac gia ve thi huy suat cu va tao suat moi.":
+    "Suất chiếu đã lên lịch. Hiện CinemaLM chưa mở luồng hủy/đổi suất đã lên lịch.",
+  "Chi co the len lich suat chieu dang draft.":
+    "Chỉ có thể lên lịch suất chiếu đang ở trạng thái nháp.",
+  "Phim khong co ban chieu cho dinh dang nay.":
+    "Phim không có bản chiếu cho định dạng này.",
+  "Phong chieu khong ho tro dinh dang nay.":
+    "Phòng chiếu không hỗ trợ định dạng này.",
 };
 
 const formatShowtimeError = (error?: string) =>
   error ? showtimeErrorLabels[error] || error : undefined;
 
 const statusLabels: Record<IShowtime["status"], string> = {
+  draft: "Nháp",
   scheduled: "Đã lên lịch",
   in_progress: "Đang chiếu",
   ended: "Đã kết thúc",
   sold_out: "Hết vé",
   cancelled: "Đã hủy",
 };
+
+const statusColors: Record<IShowtime["status"], string> = {
+  draft: "default",
+  scheduled: "processing",
+  in_progress: "warning",
+  ended: "success",
+  sold_out: "volcano",
+  cancelled: "error",
+};
+
+const projectionFormatOptions: {
+  value: IShowtime["projectionFormat"];
+  label: string;
+}[] = [
+  { value: "2D", label: "2D" },
+  { value: "3D", label: "3D" },
+  { value: "IMAX", label: "IMAX" },
+];
+
+const canEditCore = (showtime?: IShowtime | null) =>
+  !showtime || showtime.status === "draft";
 
 const AdminShowtimes = () => {
   const [page, setPage] = useState(1);
@@ -62,6 +101,9 @@ const AdminShowtimes = () => {
   const [serverError, setServerError] = useState<string | null>(null);
   const [form] = Form.useForm<ShowtimeFormValues>();
   const queryClient = useQueryClient();
+  const selectedMovieId = Form.useWatch("movieId", form);
+  const selectedRoomId = Form.useWatch("roomId", form);
+  const selectedProjectionFormat = Form.useWatch("projectionFormat", form);
 
   const showtimes = useQuery({
     queryKey: ["ADMIN", "SHOWTIMES", page],
@@ -118,6 +160,7 @@ const AdminShowtimes = () => {
         {
           movie_id: "movieId",
           room_id: "roomId",
+          projection_format: "projectionFormat",
           start_time: "startTime",
         };
 
@@ -140,20 +183,73 @@ const AdminShowtimes = () => {
       message.error(errorMessage);
     },
   });
-  const cancel = useMutation({
+  const publish = useMutation({
     mutationFn: (showtime: IShowtime) =>
-      adminService.cancelShowtime(showtime._id, "Admin hủy suất chiếu."),
+      adminService.publishShowtime(showtime._id),
     onSuccess: async () => {
-      message.success("Đã hủy suất chiếu.");
+      message.success("Đã lên lịch suất chiếu.");
       await queryClient.invalidateQueries({ queryKey: ["ADMIN", "SHOWTIMES"] });
     },
-    onError: () => message.error("Không thể hủy suất chiếu này."),
+    onError: (error: AxiosError<ApiErrorBody>) => {
+      const errors = error.response?.data?.errors;
+      const firstError = errors
+        ? Object.values(errors)
+            .flatMap((item) => (Array.isArray(item) ? item : [item]))
+            .find(Boolean)
+        : undefined;
+      message.error(
+        formatShowtimeError(firstError || error.response?.data?.message) ||
+          "Không thể lên lịch suất chiếu này.",
+      );
+    },
   });
 
   const availableRooms =
     rooms.data?.items.filter(
       (room) => room.status && (room.seatCount || 0) > 0,
     ) || [];
+  const validProjectionFormatOptions = useMemo(() => {
+    const movie = movies.data?.items.find(
+      (item) => Number(item._id) === Number(selectedMovieId),
+    );
+    const room = rooms.data?.items.find(
+      (item) => Number(item._id) === Number(selectedRoomId),
+    );
+    const movieFormats = movie?.availableProjectionFormats || ["2D"];
+    const roomFormats = room?.supportedProjectionFormats || ["2D"];
+
+    return projectionFormatOptions.filter(
+      (option) =>
+        movieFormats.includes(option.value) &&
+        roomFormats.includes(option.value),
+    );
+  }, [movies.data?.items, rooms.data?.items, selectedMovieId, selectedRoomId]);
+
+  useEffect(() => {
+    if (!open || !canEditCore(editing)) return;
+    if (!selectedMovieId || !selectedRoomId) return;
+    if (!validProjectionFormatOptions.length) {
+      form.setFieldValue("projectionFormat", undefined);
+      return;
+    }
+    const isCurrentFormatStillValid = validProjectionFormatOptions.some(
+      (option) => option.value === selectedProjectionFormat,
+    );
+    if (!isCurrentFormatStillValid) {
+      form.setFieldValue(
+        "projectionFormat",
+        validProjectionFormatOptions[0].value,
+      );
+    }
+  }, [
+    editing,
+    form,
+    open,
+    selectedMovieId,
+    selectedProjectionFormat,
+    selectedRoomId,
+    validProjectionFormatOptions,
+  ]);
 
   const openForm = (showtime?: IShowtime) => {
     setEditing(showtime || null);
@@ -161,6 +257,7 @@ const AdminShowtimes = () => {
     form.setFields([
       { name: "movieId", errors: [] },
       { name: "roomId", errors: [] },
+      { name: "projectionFormat", errors: [] },
       { name: "startTime", errors: [] },
     ]);
     const prices = Object.fromEntries(
@@ -169,6 +266,7 @@ const AdminShowtimes = () => {
     form.setFieldsValue({
       movieId: showtime ? Number(showtime.movieId._id) : undefined,
       roomId: showtime ? Number((showtime.roomId as IRoom)._id) : undefined,
+      projectionFormat: showtime?.projectionFormat || "2D",
       startTime: showtime
         ? dayjs(showtime.startTime)
         : dayjs().add(1, "hour").startOf("hour"),
@@ -180,10 +278,18 @@ const AdminShowtimes = () => {
   };
 
   const submit = (values: ShowtimeFormValues) => {
+    if (editing && !canEditCore(editing)) {
+      setServerError(
+        "Suất chiếu đã khóa dữ liệu cốt lõi. CinemaLM tạm thời chưa mở luồng hủy/đổi suất đã lên lịch.",
+      );
+      return;
+    }
+
     setServerError(null);
     save.mutate({
       movie_id: values.movieId,
       room_id: values.roomId,
+      projection_format: values.projectionFormat,
       start_time: values.startTime.format("YYYY-MM-DD HH:mm:ss"),
       prices: {
         NORMAL: values.normalPrice,
@@ -191,6 +297,40 @@ const AdminShowtimes = () => {
         COUPLE: values.couplePrice,
       },
     });
+  };
+
+  const renderActions = (record: IShowtime) => {
+    if (record.status === "draft") {
+      return (
+        <Space size="small">
+          <Tooltip title="Chỉnh sửa suất chiếu nháp">
+            <Button icon={<EditOutlined />} onClick={() => openForm(record)} />
+          </Tooltip>
+          <Tooltip title="Công khai suất chiếu cho khách đặt vé">
+            <Button
+              icon={<CheckCircleOutlined />}
+              loading={publish.isPending}
+              onClick={() =>
+                Modal.confirm({
+                  title: "Lên lịch suất chiếu này?",
+                  content:
+                    "Sau khi lên lịch, phim, phòng, định dạng, thời gian và giá vé sẽ bị khóa. Hiện tại chưa mở luồng hủy/đổi suất đã lên lịch.",
+                  okText: "Lên lịch",
+                  cancelText: "Để sau",
+                  onOk: () => publish.mutateAsync(record),
+                })
+              }
+            />
+          </Tooltip>
+        </Space>
+      );
+    }
+
+    return (
+      <Tooltip title="Chỉ xem chi tiết, không được chỉnh sửa hoặc hủy">
+        <Button icon={<EyeOutlined />} onClick={() => openForm(record)} />
+      </Tooltip>
+    );
   };
 
   return (
@@ -213,13 +353,21 @@ const AdminShowtimes = () => {
         </Button>
       </div>
 
+      <Alert
+        className="mt-5"
+        type="info"
+        showIcon
+        message="Rule vận hành"
+        description="Chỉ suất chiếu nháp được sửa phim, phòng, định dạng, giờ chiếu và giá vé. Khi đã lên lịch, suất chiếu bị khóa; CinemaLM tạm thời chưa mở luồng hủy/đổi suất đã lên lịch."
+      />
+
       <div className="mt-6 overflow-hidden border border-white/10 bg-[#141414]">
         <Table<IShowtime>
           rowKey="_id"
           loading={showtimes.isLoading}
           dataSource={showtimes.data?.items}
           pagination={false}
-          scroll={{ x: 950 }}
+          scroll={{ x: 980 }}
           columns={[
             {
               title: "Phim",
@@ -232,6 +380,14 @@ const AdminShowtimes = () => {
               dataIndex: "roomId",
               width: 160,
               render: (room: IRoom) => room.name,
+            },
+            {
+              title: "Định dạng",
+              dataIndex: "projectionFormat",
+              width: 110,
+              render: (value: IShowtime["projectionFormat"]) => (
+                <Tag color={value === "IMAX" ? "purple" : "blue"}>{value}</Tag>
+              ),
             },
             {
               title: "Giờ chiếu",
@@ -262,32 +418,16 @@ const AdminShowtimes = () => {
             {
               title: "Trạng thái",
               dataIndex: "status",
-              width: 130,
-              render: (status: IShowtime["status"]) => statusLabels[status],
+              width: 140,
+              render: (status: IShowtime["status"]) => (
+                <Tag color={statusColors[status]}>{statusLabels[status]}</Tag>
+              ),
             },
             {
-              title: "",
-              width: 110,
+              title: "Thao tác",
+              width: 130,
               fixed: "right",
-              render: (_, record) => (
-                <div className="flex gap-2">
-                  <Button
-                    icon={<EditOutlined />}
-                    onClick={() => openForm(record)}
-                  />
-                  <Button
-                    danger
-                    icon={<DeleteOutlined />}
-                    disabled={record.status === "cancelled"}
-                    onClick={() =>
-                      Modal.confirm({
-                        title: "Hủy suất chiếu này?",
-                        onOk: () => cancel.mutateAsync(record),
-                      })
-                    }
-                  />
-                </div>
-              ),
+              render: (_, record) => renderActions(record),
             },
           ]}
           locale={{ emptyText: "Chưa có suất chiếu" }}
@@ -303,7 +443,7 @@ const AdminShowtimes = () => {
       />
 
       <Modal
-        title={editing ? "Cập nhật suất chiếu" : "Thêm suất chiếu"}
+        title={editing ? "Chi tiết suất chiếu" : "Thêm suất chiếu"}
         open={open}
         width={720}
         onCancel={() => {
@@ -313,8 +453,18 @@ const AdminShowtimes = () => {
         onOk={() => form.submit()}
         confirmLoading={save.isPending}
         okText={editing ? "Lưu thay đổi" : "Thêm suất chiếu"}
-        cancelText="Hủy"
+        cancelText="Đóng"
+        okButtonProps={{ disabled: Boolean(editing && !canEditCore(editing)) }}
       >
+        {editing && !canEditCore(editing) && (
+          <Alert
+            className="mb-4"
+            type="warning"
+            showIcon
+            message="Suất chiếu đã khóa"
+            description="Không được sửa phim, phòng, định dạng, giờ chiếu hoặc giá vé sau khi suất đã lên lịch/đang chiếu/kết thúc. Luồng hủy/đổi suất sẽ được thiết kế sau khi hoàn thiện các chức năng chính."
+          />
+        )}
         {serverError && (
           <Alert
             className="mb-4"
@@ -332,6 +482,18 @@ const AdminShowtimes = () => {
             message="Chưa có phòng hoạt động đã được tạo sơ đồ ghế."
           />
         )}
+        {selectedMovieId &&
+          selectedRoomId &&
+          !validProjectionFormatOptions.length &&
+          canEditCore(editing) && (
+            <Alert
+              className="mb-4"
+              type="error"
+              showIcon
+              message="Phim và phòng không có định dạng chiếu chung."
+              description="Hãy chọn phim/phòng khác hoặc cập nhật capability định dạng của phim và phòng."
+            />
+          )}
         <Form form={form} layout="vertical" onFinish={submit}>
           <div className="grid gap-x-4 md:grid-cols-2">
             <Form.Item
@@ -366,8 +528,23 @@ const AdminShowtimes = () => {
                 placeholder="Chọn phòng chiếu"
                 options={availableRooms.map((room) => ({
                   value: Number(room._id),
-                  label: `${room.name} · ${room.seatCount} ghế`,
+                  label: `${room.name} · ${room.seatCount} ghế · ${
+                    room.supportedProjectionFormats?.join(", ") || "2D"
+                  }`,
                 }))}
+              />
+            </Form.Item>
+            <Form.Item
+              name="projectionFormat"
+              label="Định dạng chiếu"
+              rules={[
+                { required: true, message: "Vui lòng chọn định dạng chiếu." },
+              ]}
+            >
+              <Select
+                disabled={Boolean(editing)}
+                options={validProjectionFormatOptions}
+                placeholder="Chọn định dạng"
               />
             </Form.Item>
           </div>
@@ -388,6 +565,7 @@ const AdminShowtimes = () => {
               showTime={{ format: "HH:mm", minuteStep: 5 }}
               format="DD/MM/YYYY HH:mm"
               className="w-full"
+              disabled={Boolean(editing) || undefined}
               disabledDate={(date) => date.endOf("day").isBefore(dayjs())}
               placeholder="Chọn ngày và giờ chiếu"
             />
@@ -409,6 +587,7 @@ const AdminShowtimes = () => {
                 rules={[{ required: true, message: "Vui lòng nhập giá vé." }]}
               >
                 <InputNumber
+                  disabled={Boolean(editing && !canEditCore(editing))}
                   min={1000}
                   max={10000000}
                   step={5000}

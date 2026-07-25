@@ -27,6 +27,12 @@ import {
 import type { ICategory } from "../../common/types/category";
 import type { IMovie } from "../../common/types/movie";
 
+const projectionFormatOptions = [
+  { value: "2D", label: "2D" },
+  { value: "3D", label: "3D" },
+  { value: "IMAX", label: "IMAX" },
+];
+
 interface MovieFormValues
   extends Omit<MoviePayload, "actors" | "release_date" | "end_date"> {
   actorsText: string;
@@ -82,7 +88,6 @@ const AdminMovies = () => {
             description: movie.description,
             poster: movie.poster,
             trailer: movie.trailer,
-            status_release: movie.statusRelease,
             actorsText: movie.actor.join(", "),
             director: movie.director,
             rating: movie.rating,
@@ -90,6 +95,9 @@ const AdminMovies = () => {
             country: movie.country,
             language: movie.language,
             sub_language: movie.subLanguage,
+            available_projection_formats: movie.availableProjectionFormats || [
+              "2D",
+            ],
             duration: movie.duration,
             releaseDate: dayjs(movie.releaseDate),
             endDate: dayjs(movie.endDate),
@@ -98,9 +106,9 @@ const AdminMovies = () => {
             category_ids: movieCategories.map((item) => Number(item._id)),
           }
         : {
-            status_release: "upcoming",
             age_require: "P",
             rating: 5,
+            available_projection_formats: ["2D"],
             is_featured: false,
             status: true,
           },
@@ -178,6 +186,12 @@ const AdminMovies = () => {
               render: (v) => `${v} phút`,
             },
             { title: "Điểm", dataIndex: "rating", width: 70 },
+            {
+              title: "Định dạng",
+              dataIndex: "availableProjectionFormats",
+              width: 150,
+              render: (value: string[] = []) => value.join(", "),
+            },
             {
               title: "Phát hành",
               dataIndex: "statusRelease",
@@ -283,19 +297,6 @@ const AdminMovies = () => {
               />
             </Form.Item>
             <Form.Item
-              name="status_release"
-              label="Tình trạng phát hành"
-              rules={[{ required: true }]}
-            >
-              <Select
-                options={[
-                  { value: "upcoming", label: "Sắp chiếu" },
-                  { value: "nowShowing", label: "Đang chiếu" },
-                  { value: "released", label: "Đã chiếu" },
-                ]}
-              />
-            </Form.Item>
-            <Form.Item
               name="age_require"
               label="Độ tuổi"
               rules={[{ required: true }]}
@@ -306,6 +307,13 @@ const AdminMovies = () => {
                   label: value,
                 }))}
               />
+            </Form.Item>
+            <Form.Item
+              name="available_projection_formats"
+              label="Định dạng phim có bản chiếu"
+              rules={[{ required: true }]}
+            >
+              <Select mode="multiple" options={projectionFormatOptions} />
             </Form.Item>
             <Form.Item
               name="duration"
