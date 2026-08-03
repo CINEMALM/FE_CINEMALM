@@ -61,7 +61,7 @@ export const useLogoutMutation = () => {
     mutationFn: () => authService.logout(),
     onSettled: () => {
       clearAuth();
-      queryClient.removeQueries({ queryKey: [QUERYKEY.AUTH] });
+      queryClient.removeQueries();
     },
   });
 };

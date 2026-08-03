@@ -2,12 +2,11 @@ import {
   CloseOutlined,
   DashboardOutlined,
   MenuOutlined,
-  ProfileOutlined,
   SearchOutlined,
 } from "@ant-design/icons";
+import { Input, Modal } from "antd";
 import { useEffect, useState } from "react";
-import type { MouseEvent } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import { useLogoutMutation } from "../../hooks/useAuth";
 import { useAuthSelector } from "../../stores/useAuthStore";
 import LoginModal from "../../../components/LoginModal";
@@ -20,19 +19,14 @@ const navItems = [
 
 const Header = () => {
   const [open, setOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchKeyword, setSearchKeyword] = useState("");
   const user = useAuthSelector((state) => state.user);
   const isAuthenticated = useAuthSelector((state) => state.isAuthenticated);
   const logoutMutation = useLogoutMutation();
   const navigate = useNavigate();
+  const location = useLocation();
   const isAdmin = user?.role?.toLowerCase() === "admin";
-  const requestLogin = useAuthSelector((state) => state.requestLogin);
-
-  const requireLogin = (event: MouseEvent<HTMLAnchorElement>, path: string) => {
-    if (isAuthenticated) return;
-    event.preventDefault();
-    setOpen(false);
-    requestLogin({ path });
-  };
 
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
@@ -47,13 +41,27 @@ const Header = () => {
     // logoutMutation.mutate();
 
     logoutMutation.mutate(undefined, {
-      onSuccess: () => navigate("/"),
+      onSettled: () => navigate("/", { replace: true }),
     });
   };
 
+  const submitSearch = (value = searchKeyword) => {
+    const keyword = value.trim();
+    setSearchOpen(false);
+    setOpen(false);
+    navigate(
+      keyword ? `/movie?keyword=${encodeURIComponent(keyword)}` : "/movie",
+    );
+  };
+
+  const outlineActionClass =
+    "border border-white/15 text-[#F2F2F2] transition hover:border-[#DC0000] hover:bg-[#DC0000] hover:text-[#0A0A0A]";
+  const primaryActionClass =
+    "bg-[#DC0000] text-[#0A0A0A] transition hover:bg-[#F2F2F2]";
+
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0A0A0A]/95 backdrop-blur-xl">
-      <div className="mx-auto flex h-[72px] max-w-[1440px] items-center justify-between px-4 sm:px-6 lg:h-[88px] lg:px-10 gap-4">
+      <div className="mx-auto flex h-[68px] max-w-[1440px] items-center justify-between gap-3 px-4 sm:h-[76px] sm:px-6 xl:h-[88px] xl:px-10">
         <Link
           to="/"
           className="group flex items-center gap-3"
@@ -67,17 +75,18 @@ const Header = () => {
         </Link>
 
         <nav
-          className="hidden items-center gap-8 lg:flex"
+          className="hidden items-center gap-6 xl:flex"
           aria-label="Main navigation"
         >
-          {navItems.map((item, index) => (
+          {navItems.map((item) => (
             <Link
               key={item.href}
               to={item.href}
-              className={`text-sm font-semibold uppercase tracking-[0.16em] transition ${
-                index === 0
-                  ? "text-[#F2F2F2]"
-                  : "text-[#9A9A9A] hover:text-[#F2F2F2]"
+              className={`border-b-2 py-2 text-sm font-semibold uppercase tracking-[0.16em] transition ${
+                location.pathname === item.href ||
+                (item.href !== "/" && location.pathname.startsWith(item.href))
+                  ? "border-[#DC0000] text-[#F2F2F2]"
+                  : "border-transparent text-[#9A9A9A] hover:border-[#DC0000] hover:text-[#F2F2F2]"
               }`}
             >
               {item.label}
@@ -85,29 +94,22 @@ const Header = () => {
           ))}
         </nav>
 
-        <div className="hidden items-center gap-3 lg:flex">
+        <div className="hidden items-center gap-2 xl:flex">
           <button
             type="button"
-            className="grid h-11 w-11 place-items-center border border-white/10 bg-[#141414] text-[#F2F2F2] transition hover:border-white/30"
+            className={`grid h-11 w-11 place-items-center bg-[#141414] ${outlineActionClass}`}
             aria-label="Tìm kiếm"
+            onClick={() => setSearchOpen(true)}
           >
             <SearchOutlined />
           </button>
-          <Link
-            to="/profile/ticket"
-            onClick={(event) => requireLogin(event, "/profile/ticket")}
-            className="grid h-11 w-11 place-items-center border border-white/10 bg-[#141414] text-[#F2F2F2] transition hover:border-white/30"
-            aria-label="Vé của tôi"
-          >
-            <ProfileOutlined />
-          </Link>
 
           {isAuthenticated ? (
             <>
               {isAdmin && (
                 <Link
                   to="/admin"
-                  className="inline-flex h-11 items-center gap-2 border border-[#DC0000]/60 px-4 text-xs font-black uppercase tracking-[0.1em] text-[#DC0000] transition hover:bg-[#DC0000] hover:text-[#0A0A0A]"
+                  className={`inline-flex h-11 items-center gap-2 px-4 text-xs font-black uppercase tracking-[0.1em] ${outlineActionClass}`}
                 >
                   <DashboardOutlined />
                   Trang quản trị
@@ -115,13 +117,13 @@ const Header = () => {
               )}
               <Link
                 to="/profile"
-                className="h-11 max-w-48 truncate border border-white/15 px-5 text-sm font-bold uppercase leading-[44px] tracking-[0.14em] text-[#F2F2F2] transition hover:border-white/40"
+                className={`h-11 max-w-44 truncate px-4 text-sm font-bold uppercase leading-[42px] tracking-[0.1em] ${outlineActionClass}`}
               >
                 {user?.userName || "Tài khoản"}
               </Link>
               <button
                 type="button"
-                className="h-11 bg-[#DC0000] px-5 text-sm font-black uppercase tracking-[0.14em] text-[#0A0A0A] transition hover:bg-[#F2F2F2]"
+                className={`h-11 px-4 text-sm font-black uppercase tracking-[0.12em] ${primaryActionClass}`}
                 onClick={handleLogout}
               >
                 Đăng xuất
@@ -132,7 +134,7 @@ const Header = () => {
               <RegisterModal>
                 <button
                   type="button"
-                  className="h-11 border border-white/15 px-5 text-sm font-bold uppercase tracking-[0.14em] text-[#F2F2F2] transition hover:border-white/40"
+                  className={`h-11 px-5 text-sm font-bold uppercase tracking-[0.14em] ${outlineActionClass}`}
                 >
                   Đăng ký
                 </button>
@@ -140,7 +142,7 @@ const Header = () => {
               <LoginModal>
                 <button
                   type="button"
-                  className="h-11 bg-[#DC0000] px-5 text-sm font-black uppercase tracking-[0.14em] text-[#0A0A0A] transition hover:bg-[#F2F2F2]"
+                  className={`h-11 px-5 text-sm font-black uppercase tracking-[0.14em] ${primaryActionClass}`}
                 >
                   Đăng nhập
                 </button>
@@ -151,7 +153,7 @@ const Header = () => {
 
         <button
           type="button"
-          className="grid h-11 w-11 place-items-center border border-white/10 bg-[#141414] text-[#F2F2F2] lg:hidden"
+          className={`grid h-11 w-11 place-items-center bg-[#141414] xl:hidden ${outlineActionClass}`}
           aria-label="Mở menu"
           onClick={() => setOpen(true)}
         >
@@ -161,7 +163,7 @@ const Header = () => {
 
       {open && (
         <div
-          className="cinemalm-mobile-menu lg:hidden"
+          className="cinemalm-mobile-menu xl:hidden"
           style={{
             position: "fixed",
             inset: 0,
@@ -208,21 +210,11 @@ const Header = () => {
             ))}
           </nav>
 
-          <div className="mt-8 grid grid-cols-2 gap-3">
-            <Link
-              to="/profile/ticket"
-              onClick={(event) => {
-                setOpen(false);
-                requireLogin(event, "/profile/ticket");
-              }}
-              className="flex h-12 items-center justify-center gap-2 border border-white/15 text-sm font-bold uppercase tracking-[0.14em] text-[#F2F2F2]"
-            >
-              <ProfileOutlined />
-              Vé của tôi
-            </Link>
+          <div className="mt-8">
             <button
               type="button"
-              className="flex h-12 items-center justify-center gap-2 border border-white/15 text-sm font-bold uppercase tracking-[0.14em] text-[#F2F2F2]"
+              onClick={() => setSearchOpen(true)}
+              className={`flex h-12 w-full items-center justify-center gap-2 text-sm font-bold uppercase tracking-[0.14em] ${outlineActionClass}`}
             >
               <SearchOutlined />
               Tìm kiếm
@@ -285,6 +277,28 @@ const Header = () => {
           </p>
         </div>
       )}
+
+      <Modal
+        title="Tìm kiếm phim"
+        open={searchOpen}
+        footer={null}
+        width={560}
+        onCancel={() => setSearchOpen(false)}
+        afterOpenChange={(visible) => {
+          if (!visible) setSearchKeyword("");
+        }}
+      >
+        <Input.Search
+          autoFocus
+          allowClear
+          size="large"
+          value={searchKeyword}
+          placeholder="Nhập tên phim hoặc đạo diễn..."
+          enterButton="Tìm kiếm"
+          onChange={(event) => setSearchKeyword(event.target.value)}
+          onSearch={submitSearch}
+        />
+      </Modal>
     </header>
   );
 };

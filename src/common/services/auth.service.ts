@@ -140,17 +140,12 @@ export const authService = {
     return response.data;
   },
 
-  async updateProfile(payload: {
-    userName: string;
-    phone?: string;
-    avatar?: string;
-  }) {
+  async updateProfile(payload: { userName: string; phone?: string }) {
     const response = await api.patch<TypeResponse<AuthResponseData>>(
       "/auth/profile",
       {
         user_name: payload.userName,
         phone: payload.phone || null,
-        avatar: payload.avatar || null,
       },
     );
     return normalizeUser(response.data.data);

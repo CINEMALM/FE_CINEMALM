@@ -1,4 +1,4 @@
-import { Outlet } from "react-router";
+import { Outlet, useLocation } from "react-router";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import { ConfigProvider, theme, App } from "antd";
@@ -16,6 +16,16 @@ const AuthInitializer = () => {
       clearAuth();
     }
   }, [authMeQuery.isError, clearAuth]);
+
+  return null;
+};
+
+const ScrollToTop = () => {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [pathname]);
 
   return null;
 };
@@ -54,6 +64,7 @@ const MainLayout = () => {
       >
         <App>
           <AuthInitializer />
+          <ScrollToTop />
           <LoginModal global />
           <Header />
           <main>

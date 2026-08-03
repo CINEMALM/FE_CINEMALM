@@ -29,4 +29,24 @@ export const formRules = {
       return Promise.resolve();
     },
   }),
+
+  password: (): Rule => ({
+    validator: (_, value) => {
+      if (!value) return Promise.resolve();
+      if (value.length < 8) {
+        return Promise.reject(new Error("Mật khẩu phải có ít nhất 8 ký tự!"));
+      }
+      if (!/[A-Za-z]/.test(value)) {
+        return Promise.reject(
+          new Error("Mật khẩu phải có ít nhất một chữ cái!"),
+        );
+      }
+      if (!/\d/.test(value)) {
+        return Promise.reject(
+          new Error("Mật khẩu phải có ít nhất một chữ số!"),
+        );
+      }
+      return Promise.resolve();
+    },
+  }),
 };

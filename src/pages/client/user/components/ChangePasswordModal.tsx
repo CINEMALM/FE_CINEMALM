@@ -1,6 +1,9 @@
 import { Button, Form, Input, Modal } from "antd";
 import type { ReactElement } from "react";
 import React, { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { message } from "antd";
+import { authService } from "../../../../common/services/auth.service";
 import { formRules } from "../../../../common/utils/formRules";
 
 const ChangePasswordModal = ({
@@ -12,10 +15,26 @@ const ChangePasswordModal = ({
 }) => {
   const [open, setOpen] = useState(false);
   const [form] = Form.useForm();
+  const changePassword = useMutation({
+    mutationFn: authService.changePassword,
+    onSuccess: () => {
+      message.success("Đổi mật khẩu thành công.");
+      setOpen(false);
+      form.resetFields();
+    },
+    onError: () => message.error("Không thể đổi mật khẩu."),
+  });
 
-  const handleSubmit = () => {
-    setOpen(false);
-    form.resetFields();
+  const handleSubmit = (values: {
+    oldPassword?: string;
+    newPassword: string;
+    confirmNewPassword: string;
+  }) => {
+    changePassword.mutate({
+      currentPassword: values.oldPassword,
+      password: values.newPassword,
+      passwordConfirmation: values.confirmNewPassword,
+    });
   };
 
   return (
@@ -38,7 +57,7 @@ const ChangePasswordModal = ({
         }}
         title={
           <p className="text-lg font-semibold text-white/90 tracking-wide">
-            Đăng nhập
+            Đổi mật khẩu
           </p>
         }
         footer={null}
@@ -64,14 +83,28 @@ const ChangePasswordModal = ({
             />
           </Form.Item>
 
-          <div className="flex items-center gap-6">
+          <div className="flex flex-col gap-0 sm:flex-row sm:items-center sm:gap-6">
             <Form.Item
               label={<p className="text-base font-medium">Mật khẩu</p>}
               className="flex-1"
               name={"newPassword"}
               required
               hasFeedback
-              rules={[formRules.required("Mật khẩu mới")]}
+              dependencies={["oldPassword"]}
+              rules={[
+                formRules.required("Mật khẩu mới"),
+                formRules.password(),
+                ({ getFieldValue }) => ({
+                  validator(_, value) {
+                    if (!value || value !== getFieldValue("oldPassword")) {
+                      return Promise.resolve();
+                    }
+                    return Promise.reject(
+                      new Error("Mật khẩu mới không được trùng mật khẩu cũ!"),
+                    );
+                  },
+                }),
+              ]}
             >
               <Input.Password
                 className="bg-transparent! text-white placeholder:text-white/50! border-white/10!"
@@ -85,6 +118,8 @@ const ChangePasswordModal = ({
               className="flex-1"
               name={"confirmNewPassword"}
               required
+              dependencies={["newPassword"]}
+              hasFeedback
               rules={[
                 formRules.required("Xác nhận mật khẩu mới"),
                 ({ getFieldValue }) => ({
@@ -112,6 +147,7 @@ const ChangePasswordModal = ({
               <Button onClick={() => setOpen(false)}>Đóng</Button>
               <Button
                 htmlType="submit"
+                loading={changePassword.isPending}
                 style={{
                   background: `var(--color-primary)`,
                 }}

@@ -55,6 +55,7 @@ const LoginModal = ({
         React.cloneElement(children, {
           onClick: () => {
             if (onSwitch) onSwitch();
+            clearPendingLogin();
             setOpen(true);
           },
         } as { onClick: () => void })}

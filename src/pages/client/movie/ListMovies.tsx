@@ -1,8 +1,8 @@
 import dayjs from "dayjs";
 import { RightOutlined, StarFilled } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
-import { Link } from "react-router";
+import { useEffect, useState } from "react";
+import { Link, useSearchParams } from "react-router";
 import { Input, Pagination, Select } from "antd";
 import { QUERYKEY } from "../../../common/constants/queryKey";
 import { getMovies } from "../../../common/services/movie.service";
@@ -44,10 +44,13 @@ const statusContent: Record<
 };
 
 const ListMovies = () => {
+  const [searchParams] = useSearchParams();
+  const headerKeyword = searchParams.get("keyword")?.trim() || "";
   const [statusFilter, setStatusFilter] =
     useState<MovieStatusFilter>("nowShowing");
   const [page, setPage] = useState(1);
-  const [keyword, setKeyword] = useState("");
+  const [keyword, setKeyword] = useState(headerKeyword);
+  const [searchValue, setSearchValue] = useState(headerKeyword);
   const [categoryId, setCategoryId] = useState<number>();
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: [QUERYKEY.MOVIE, statusFilter, page, keyword, categoryId],
@@ -67,6 +70,12 @@ const ListMovies = () => {
   });
   const movies = data?.movies || [];
   const currentContent = statusContent[statusFilter];
+
+  useEffect(() => {
+    setPage(1);
+    setKeyword(headerKeyword);
+    setSearchValue(headerKeyword);
+  }, [headerKeyword]);
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-[#F2F2F2]">
@@ -112,7 +121,9 @@ const ListMovies = () => {
           <div className="mt-4 grid gap-3 md:grid-cols-[1fr_280px]">
             <Input.Search
               allowClear
+              value={searchValue}
               placeholder="Tìm tên phim, đạo diễn..."
+              onChange={(event) => setSearchValue(event.target.value)}
               onSearch={(value) => {
                 setPage(1);
                 setKeyword(value.trim());

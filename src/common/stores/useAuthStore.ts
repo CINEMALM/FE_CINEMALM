@@ -29,7 +29,13 @@ export const useAuthStore = create<AuthState>()(
         setUser: (user) => set({ user, isAuthenticated: Boolean(user) }),
         clearAuth: () => {
           setAccessToken(null);
-          set({ user: null, isAuthenticated: false });
+          set({
+            user: null,
+            isAuthenticated: false,
+            openModal: false,
+            pendingPath: null,
+            pendingAction: null,
+          });
         },
         setOpenModal: (open) => set({ openModal: open }),
         requestLogin: (options) =>
@@ -50,6 +56,8 @@ export const useAuthStore = create<AuthState>()(
         partialize: (state) => ({
           user: state.user,
           isAuthenticated: state.isAuthenticated,
+          // Keep the intended path across an external OAuth redirect.
+          // clearAuth always removes it on logout.
           pendingPath: state.pendingPath,
         }),
       },

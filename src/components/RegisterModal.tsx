@@ -1,10 +1,14 @@
+import { GoogleOutlined } from "@ant-design/icons";
 import { Button, Form, Input, Modal } from "antd";
+import axios from "axios";
 import type { ReactElement } from "react";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { useRegisterMutation } from "../common/hooks/useAuth";
 import { useMessage } from "../common/hooks/useMessage";
+import { authService } from "../common/services/auth.service";
 import type { IRegisterPayload } from "../common/types/auth";
+import { initCsrfToken } from "../common/utils/api";
 import { formRules } from "../common/utils/formRules";
 import LoginModal from "./LoginModal";
 
@@ -26,6 +30,11 @@ const RegisterModal = ({
   const navigate = useNavigate();
   const { HandleError, antdMessage } = useMessage();
 
+  useEffect(() => {
+    if (!open) return;
+    void initCsrfToken().catch(() => undefined);
+  }, [open]);
+
   const handleSubmit = async (values: RegisterFormValues) => {
     const payload: IRegisterPayload = {
       userName: `${values.firstName.trim()} ${values.lastName.trim()}`.trim(),
@@ -43,6 +52,24 @@ const RegisterModal = ({
       setOpen(false);
       navigate(`/verify-email?email=${encodeURIComponent(values.email)}`);
     } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const errors = error.response?.data?.errors as
+          | Record<string, string[]>
+          | undefined;
+        const fieldMap: Record<string, keyof RegisterFormValues> = {
+          user_name: "firstName",
+          email: "email",
+          phone: "phone",
+          password: "password",
+        };
+        const fieldErrors = Object.entries(errors || {}).flatMap(
+          ([field, messages]) =>
+            fieldMap[field]
+              ? [{ name: fieldMap[field], errors: messages }]
+              : [],
+        );
+        if (fieldErrors.length) form.setFields(fieldErrors);
+      }
       HandleError(error, {
         fallback: "Đăng ký thất bại. Vui lòng kiểm tra lại thông tin.",
       });
@@ -76,6 +103,9 @@ const RegisterModal = ({
           form={form}
           layout="vertical"
           onFinish={handleSubmit}
+          onFinishFailed={() =>
+            antdMessage.warning("Vui lòng kiểm tra lại các trường đăng ký.")
+          }
           className="my-6!"
         >
           <div className="grid gap-4 sm:grid-cols-2">
@@ -151,7 +181,7 @@ const RegisterModal = ({
               name="password"
               label={<p className="text-base font-medium">Mật khẩu</p>}
               hasFeedback
-              rules={[formRules.required("Mật khẩu")]}
+              rules={[formRules.required("Mật khẩu"), formRules.password()]}
             >
               <Input.Password
                 placeholder="Mật khẩu"
@@ -163,6 +193,8 @@ const RegisterModal = ({
             <Form.Item
               name="confirmPassword"
               label={<p className="text-base font-medium">Xác nhận mật khẩu</p>}
+              dependencies={["password"]}
+              hasFeedback
               rules={[
                 formRules.required("Xác nhận mật khẩu"),
                 ({ getFieldValue }) => ({
@@ -201,7 +233,21 @@ const RegisterModal = ({
             </Button>
           </Form.Item>
 
-          <p className="text-center">
+          <div className="relative my-5 border-t border-white/10">
+            <span className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 bg-[#141414] px-3 text-xs text-[#9A9A9A]">
+              hoặc
+            </span>
+          </div>
+          <Button
+            type="default"
+            icon={<GoogleOutlined />}
+            className="h-11 w-full border-white/15 font-bold hover:border-[#DC0000]! hover:text-[#DC0000]!"
+            onClick={authService.googleLogin}
+          >
+            Đăng ký với Google
+          </Button>
+
+          <p className="mt-5 text-center">
             Bạn đã có tài khoản?{" "}
             <LoginModal onSwitch={() => setOpen(false)}>
               <span className="text-primary cursor-pointer hover:underline">
