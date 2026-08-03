@@ -78,6 +78,60 @@ export interface ShowtimePayload {
   };
 }
 
+export interface ProductPayload {
+  name: string;
+  type: "popcorn" | "drink" | "combo" | "other";
+  description?: string;
+  image_url?: string;
+  is_active?: boolean;
+  variants?: {
+    id?: number;
+    name: string;
+    sku?: string;
+    price: number;
+    stock_quantity?: number | null;
+    is_active?: boolean;
+  }[];
+}
+
+export interface PromotionPayload {
+  name: string;
+  code?: string;
+  description?: string;
+  promotion_type?:
+    | "automatic"
+    | "voucher_code"
+    | "member_benefit"
+    | "gift_product";
+  apply_method?: "manual" | "automatic";
+  discount_type?: "percentage" | "fixed_amount" | "free_product";
+  discount_value?: number;
+  maximum_discount?: number | null;
+  minimum_order_amount?: number;
+  target_scope?: "order" | "ticket" | "product";
+  priority?: number;
+  stackable?: boolean;
+  start_at?: string | null;
+  end_at?: string | null;
+  usage_limit?: number | null;
+  usage_limit_per_user?: number | null;
+  is_active?: boolean;
+  conditions?: {
+    condition_type: string;
+    operator: string;
+    value: unknown;
+  }[];
+  rewards?: {
+    reward_type: "discount" | "free_product";
+    target_scope: "order" | "ticket" | "product";
+    discount_type: "percentage" | "fixed_amount" | "free_product";
+    discount_value?: number;
+    maximum_discount?: number | null;
+    product_variant_id?: number | null;
+    quantity?: number | null;
+  }[];
+}
+
 interface BackendCategory {
   id: number;
   name: string;
@@ -168,6 +222,19 @@ interface BackendTicketItem {
   price: number | string;
 }
 
+interface BackendTicketProductItem {
+  id: number | string;
+  product_variant_id?: number | string | null;
+  product_name: string;
+  variant_name: string;
+  sku?: string | null;
+  unit_price: number | string;
+  quantity: number | string;
+  total_price: number | string;
+  is_gift?: boolean;
+  status?: string;
+}
+
 interface BackendTicket {
   id: number | string;
   user_id?: number | string | null;
@@ -192,8 +259,46 @@ interface BackendTicket {
   qr_code?: string | null;
   cancel_description?: string | null;
   items?: BackendTicketItem[];
+  product_items?: BackendTicketProductItem[];
   created_at: string;
   updated_at: string;
+}
+
+interface BackendProduct {
+  id: number | string;
+  name: string;
+  type: ProductPayload["type"];
+  description?: string | null;
+  image_url?: string | null;
+  is_active: boolean;
+  variants?: {
+    id: number | string;
+    name: string;
+    sku: string;
+    price: number | string;
+    stock_quantity?: number | string | null;
+    is_active: boolean;
+  }[];
+}
+
+interface BackendPromotion {
+  id: number | string;
+  name: string;
+  code?: string | null;
+  promotion_type: string;
+  apply_method: string;
+  discount_type: string;
+  discount_value: number | string;
+  maximum_discount?: number | string | null;
+  minimum_order_amount: number | string;
+  target_scope: string;
+  priority: number | string;
+  stackable: boolean;
+  is_active: boolean;
+  start_at?: string | null;
+  end_at?: string | null;
+  conditions?: unknown[];
+  rewards?: unknown[];
 }
 
 const normalizeList = <TBackend, TFrontend>(
@@ -329,6 +434,19 @@ const normalizeTicket = (ticket: BackendTicket): ITicket => ({
     type: item.seat_type,
     price: Number(item.price),
   })),
+  productItems: (ticket.product_items || []).map((item) => ({
+    _id: String(item.id),
+    productVariantId:
+      item.product_variant_id == null ? null : String(item.product_variant_id),
+    productName: item.product_name,
+    variantName: item.variant_name,
+    sku: item.sku || "",
+    unitPrice: Number(item.unit_price || 0),
+    quantity: Number(item.quantity || 0),
+    totalPrice: Number(item.total_price || 0),
+    isGift: Boolean(item.is_gift),
+    status: item.status || "pending",
+  })),
   createdAt: ticket.created_at,
   updatedAt: ticket.updated_at,
 });
@@ -462,12 +580,65 @@ export const adminService = {
     );
     return normalizeTicket(response.data.data);
   },
+
+  async concessionTicket(ticketCode: string) {
+    const response = await api.get<ApiResponse<BackendTicket>>(
+      "/admin/concession/ticket",
+      { params: { ticket_code: ticketCode } },
+    );
+    return normalizeTicket(response.data.data);
+  },
+
+  async fulfillConcession(ticketCode: string, itemIds?: string[]) {
+    const response = await api.post<ApiResponse<BackendTicket>>(
+      "/admin/concession/fulfill",
+      {
+        ticket_code: ticketCode,
+        item_ids: itemIds?.map(Number),
+      },
+    );
+    return normalizeTicket(response.data.data);
+  },
+
+  async products(params?: Record<string, unknown>) {
+    const response = await api.get<
+      ApiResponse<LaravelPaginator<BackendProduct>>
+    >("/admin/products", { params });
+    return response.data.data;
+  },
+  async createProduct(payload: ProductPayload) {
+    await api.post("/admin/products", payload);
+  },
+  async updateProduct(id: string, payload: Partial<ProductPayload>) {
+    await api.patch(`/admin/products/${id}`, payload);
+  },
+  async disableProduct(id: string) {
+    await api.delete(`/admin/products/${id}`);
+  },
+
+  async promotions(params?: Record<string, unknown>) {
+    const response = await api.get<
+      ApiResponse<LaravelPaginator<BackendPromotion>>
+    >("/admin/promotions", { params });
+    return response.data.data;
+  },
+  async createPromotion(payload: PromotionPayload) {
+    await api.post("/admin/promotions", payload);
+  },
+  async updatePromotion(id: string, payload: Partial<PromotionPayload>) {
+    await api.patch(`/admin/promotions/${id}`, payload);
+  },
+  async disablePromotion(id: string) {
+    await api.delete(`/admin/promotions/${id}`);
+  },
   async createCounterBooking(payload: {
     showtime_id: number;
     seat_ids: number[];
     customer_name?: string;
     customer_email?: string;
     customer_phone?: string;
+    product_items?: { product_variant_id: number; quantity: number }[];
+    voucher_code?: string;
     payment_method: "CASH";
     amount_received: number;
   }) {

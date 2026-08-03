@@ -1,19 +1,22 @@
 import {
   AppstoreOutlined,
+  CoffeeOutlined,
+  CreditCardOutlined,
   DesktopOutlined,
+  GiftOutlined,
   HomeOutlined,
   LogoutOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   QrcodeOutlined,
   ScheduleOutlined,
+  ShoppingOutlined,
   TagsOutlined,
-  CreditCardOutlined,
   VideoCameraOutlined,
 } from "@ant-design/icons";
 import { ConfigProvider, theme } from "antd";
-import { useState } from "react";
-import { Link, NavLink, Outlet, useNavigate } from "react-router";
+import { useEffect, useState } from "react";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { authService } from "../services/auth.service";
 import { useAuthSelector } from "../stores/useAuthStore";
 
@@ -22,10 +25,13 @@ const menuItems = [
   { to: "/admin/movies", label: "Phim", icon: VideoCameraOutlined },
   { to: "/admin/showtimes", label: "Suất chiếu", icon: ScheduleOutlined },
   { to: "/admin/tickets", label: "Vé", icon: CreditCardOutlined },
+  { to: "/admin/concession", label: "Quầy bắp nước", icon: CoffeeOutlined },
+  { to: "/admin/products", label: "Bắp nước", icon: ShoppingOutlined },
+  { to: "/admin/promotions", label: "Khuyến mại", icon: GiftOutlined },
   { to: "/admin/categories", label: "Thể loại", icon: TagsOutlined },
   { to: "/admin/rooms", label: "Phòng & ghế", icon: DesktopOutlined },
   { to: "/admin/check-in", label: "Check-in QR", icon: QrcodeOutlined },
-  { to: "/admin/counter", label: "Counter Booking", icon: AppstoreOutlined },
+  { to: "/admin/counter", label: "Counter", icon: QrcodeOutlined },
 ];
 
 const AdminLayout = () => {
@@ -33,6 +39,11 @@ const AdminLayout = () => {
   const user = useAuthSelector((state) => state.user);
   const clearAuth = useAuthSelector((state) => state.clearAuth);
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [pathname]);
 
   const logout = async () => {
     await authService.logout().catch(() => undefined);

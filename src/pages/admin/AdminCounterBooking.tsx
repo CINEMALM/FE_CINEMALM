@@ -25,7 +25,11 @@ import { QRCodeCanvas } from "qrcode.react";
 import { useMemo, useState } from "react";
 import { SEAT_STATUS_COLOR } from "../../common/constants/seat";
 import { adminService } from "../../common/services/admin.service";
-import { getShowtimeSeats } from "../../common/services/booking.service";
+import {
+  getProducts,
+  getShowtimeSeats,
+  previewPromotions,
+} from "../../common/services/booking.service";
 import type { ISeatStatus } from "../../common/types/seat";
 import type { IShowtime } from "../../common/types/showtime";
 import type { ITicket } from "../../common/types/ticket";
@@ -45,6 +49,8 @@ const AdminCounterBooking = () => {
   } | null>(null);
   const [showtimeDate, setShowtimeDate] = useState(dayjs());
   const amountReceived = Number(Form.useWatch("amount_received", form) || 0);
+  const voucherCode = String(Form.useWatch("voucher_code", form) || "");
+  const watchedProductItems = Form.useWatch("product_items", form) || [];
 
   const showtimesQuery = useQuery({
     queryKey: ["ADMIN_COUNTER_SHOWTIMES", showtimeDate.format("YYYY-MM-DD")],
@@ -61,6 +67,11 @@ const AdminCounterBooking = () => {
     queryFn: () => getShowtimeSeats(selectedShowtimeId as string),
     enabled: Boolean(selectedShowtimeId),
     refetchInterval: 5000,
+  });
+
+  const productsQuery = useQuery({
+    queryKey: ["ADMIN_COUNTER_PRODUCTS"],
+    queryFn: getProducts,
   });
 
   const sellableShowtimes = useMemo(
@@ -113,6 +124,42 @@ const AdminCounterBooking = () => {
     (total, seat) => total + Number(priceByType[seat.type] || 0),
     0,
   );
+  const selectedProductItems = useMemo(
+    () =>
+      (
+        watchedProductItems as {
+          product_variant_id?: number;
+          quantity?: number;
+        }[]
+      )
+        .filter(
+          (item) => item.product_variant_id && Number(item.quantity || 0) > 0,
+        )
+        .map((item) => ({
+          product_variant_id: Number(item.product_variant_id),
+          quantity: Number(item.quantity || 1),
+        })),
+    [watchedProductItems],
+  );
+  const promotionPreview = useQuery({
+    queryKey: [
+      "ADMIN_COUNTER_PROMOTION_PREVIEW",
+      selectedShowtimeId,
+      selectedSeatIds,
+      selectedProductItems,
+      voucherCode,
+    ],
+    queryFn: () =>
+      previewPromotions({
+        showtimeId: selectedShowtimeId as string,
+        seatIds: selectedSeatIds,
+        productItems: selectedProductItems,
+        voucherCode: voucherCode.trim(),
+      }),
+    enabled: Boolean(selectedShowtimeId && selectedSeatIds.length),
+    retry: false,
+  });
+  const payableAmount = promotionPreview.data?.total_amount ?? totalPrice;
   const issuedAt = createdTicket?.paidAt || createdTicket?.createdAt;
   const ticketQrValue =
     createdTicket?.qrCode || createdTicket?.ticketCode || "";
@@ -131,6 +178,8 @@ const AdminCounterBooking = () => {
         customer_name: values.customer_name || undefined,
         customer_email: values.customer_email || undefined,
         customer_phone: values.customer_phone || undefined,
+        product_items: selectedProductItems,
+        voucher_code: values.voucher_code || undefined,
         payment_method: "CASH",
         amount_received: Number(values.amount_received || 0),
       });
@@ -356,6 +405,25 @@ const AdminCounterBooking = () => {
               {createdTicket.items.map((item) => item.seatLabel).join(", ")}
             </strong>
           </div>
+          {createdTicket.productItems?.length ? (
+            <div className="counter-print-ticket__row">
+              <span>Combo</span>
+              <strong>
+                {createdTicket.productItems
+                  .map(
+                    (item) =>
+                      `${item.isGift ? "[TANG] " : ""}${item.productName} ${item.variantName} x${item.quantity}`,
+                  )
+                  .join(", ")}
+              </strong>
+            </div>
+          ) : null}
+          {createdTicket.discountAmount ? (
+            <div className="counter-print-ticket__row">
+              <span>Giam gia</span>
+              <strong>-{formatCurrency(createdTicket.discountAmount)}</strong>
+            </div>
+          ) : null}
           <div className="counter-print-ticket__row">
             <span>Tong tien</span>
             <strong>{formatCurrency(createdTicket.totalPrice)}</strong>
@@ -497,7 +565,7 @@ const AdminCounterBooking = () => {
                     {selectedSeats.map((seat) => seat.label).join(", ") || "-"}
                   </Descriptions.Item>
                   <Descriptions.Item label="Tổng tiền">
-                    <b>{formatCurrency(totalPrice)}</b>
+                    <b>{formatCurrency(payableAmount)}</b>
                   </Descriptions.Item>
                   <Descriptions.Item label="Khách đưa">
                     {formatCurrency(amountReceived)}
@@ -505,15 +573,77 @@ const AdminCounterBooking = () => {
                   <Descriptions.Item label="Tiền thối">
                     <b
                       className={
-                        amountReceived >= totalPrice
+                        amountReceived >= payableAmount
                           ? "text-green-400"
                           : "text-red-400"
                       }
                     >
-                      {formatCurrency(Math.max(0, amountReceived - totalPrice))}
+                      {formatCurrency(
+                        Math.max(0, amountReceived - payableAmount),
+                      )}
                     </b>
                   </Descriptions.Item>
                 </Descriptions>
+                <Form.List name="product_items">
+                  {(fields, { add, remove }) => (
+                    <div className="mb-4">
+                      <Typography.Text strong>Bắp nước / Combo</Typography.Text>
+                      {fields.map((field) => (
+                        <Space
+                          key={field.key}
+                          className="mt-2 flex"
+                          align="baseline"
+                        >
+                          <Form.Item
+                            {...field}
+                            name={[field.name, "product_variant_id"]}
+                            className="!mb-0"
+                          >
+                            <Select
+                              className="min-w-[180px]"
+                              placeholder="Chọn sản phẩm"
+                              options={(productsQuery.data || []).flatMap(
+                                (product) =>
+                                  product.variants.map((variant) => ({
+                                    value: Number(variant.id),
+                                    label: `${product.name} · ${variant.name} · ${formatCurrency(Number(variant.price || 0))}`,
+                                  })),
+                              )}
+                            />
+                          </Form.Item>
+                          <Form.Item
+                            {...field}
+                            name={[field.name, "quantity"]}
+                            className="!mb-0"
+                            initialValue={1}
+                          >
+                            <InputNumber min={1} max={20} />
+                          </Form.Item>
+                          <Button danger onClick={() => remove(field.name)}>
+                            Xóa
+                          </Button>
+                        </Space>
+                      ))}
+                      <Button
+                        className="mt-2"
+                        onClick={() => add({ quantity: 1 })}
+                      >
+                        Thêm combo
+                      </Button>
+                    </div>
+                  )}
+                </Form.List>
+                <Form.Item label="Voucher" name="voucher_code">
+                  <Input placeholder="VD: CINEMA50" />
+                </Form.Item>
+                {promotionPreview.data?.discount_amount ? (
+                  <Alert
+                    className="mb-4"
+                    type="success"
+                    showIcon
+                    message={`Đã giảm ${formatCurrency(promotionPreview.data.discount_amount)}`}
+                  />
+                ) : null}
                 <Form.Item
                   label="Tiền khách đưa"
                   name="amount_received"
@@ -521,7 +651,7 @@ const AdminCounterBooking = () => {
                     { required: true, message: "Nhập số tiền đã nhận." },
                     {
                       validator: (_, value) =>
-                        Number(value || 0) >= totalPrice
+                        Number(value || 0) >= payableAmount
                           ? Promise.resolve()
                           : Promise.reject(new Error("Tiền nhận chưa đủ.")),
                     },
@@ -565,6 +695,21 @@ const AdminCounterBooking = () => {
                       .map((item) => item.seatLabel)
                       .join(", ")}
                   </Descriptions.Item>
+                  {createdTicket.productItems?.length ? (
+                    <Descriptions.Item label="Bắp nước / Combo">
+                      {createdTicket.productItems
+                        .map(
+                          (item) =>
+                            `${item.isGift ? "[Tặng] " : ""}${item.productName} ${item.variantName} x${item.quantity}`,
+                        )
+                        .join(", ")}
+                    </Descriptions.Item>
+                  ) : null}
+                  {createdTicket.discountAmount ? (
+                    <Descriptions.Item label="Giảm giá">
+                      -{formatCurrency(createdTicket.discountAmount)}
+                    </Descriptions.Item>
+                  ) : null}
                   <Descriptions.Item label="Trạng thái">
                     <Tag color="green">Đã thanh toán</Tag>
                   </Descriptions.Item>
