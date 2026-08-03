@@ -1,4 +1,7 @@
 export const QUERYKEY = {
+  AUTH: Object.assign("AUTH", {
+    ME: "ME",
+  }),
   CATEGORY: Object.assign("CATEGORY", {}),
   MOVIE: Object.assign("MOVIE", {
     UPCOMING: "UPCOMING",

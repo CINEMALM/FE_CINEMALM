@@ -1,16 +1,79 @@
-import { Outlet } from "react-router";
+import { Outlet, useLocation } from "react-router";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
+import { ConfigProvider, theme, App } from "antd";
+import { useAuthMe } from "../hooks/useAuth";
+import { useEffect } from "react";
+import { useAuthStore } from "../stores/useAuthStore";
+import LoginModal from "../../components/LoginModal";
+
+const AuthInitializer = () => {
+  const authMeQuery = useAuthMe();
+  const clearAuth = useAuthStore((state) => state.clearAuth);
+
+  useEffect(() => {
+    if (authMeQuery.isError) {
+      clearAuth();
+    }
+  }, [authMeQuery.isError, clearAuth]);
+
+  return null;
+};
+
+const ScrollToTop = () => {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [pathname]);
+
+  return null;
+};
 
 const MainLayout = () => {
   return (
-    <>
-      <Header />
-      <main>
-        <Outlet />
-      </main>
-      <Footer />
-    </>
+    <div className="min-h-screen bg-[#0A0A0A] text-[#F2F2F2]">
+      <ConfigProvider
+        theme={{
+          algorithm: theme.darkAlgorithm,
+          token: {
+            colorBgBase: "#0A0A0A",
+            colorBgContainer: "#141414",
+            colorBorder: "rgba(255,255,255,0.12)",
+            colorPrimary: "#DC0000",
+            colorText: "#F2F2F2",
+            colorTextSecondary: "#9A9A9A",
+            borderRadius: 2,
+            fontFamily: "Inter, sans-serif",
+          },
+          components: {
+            Modal: {
+              contentBg: "#141414",
+              headerBg: "#141414",
+              footerBg: "#141414",
+              borderRadiusLG: 4,
+            },
+            Button: {
+              borderRadius: 2,
+              colorPrimary: "#DC0000",
+              colorPrimaryHover: "#F2F2F2",
+              colorPrimaryActive: "#F2F2F2",
+            },
+          },
+        }}
+      >
+        <App>
+          <AuthInitializer />
+          <ScrollToTop />
+          <LoginModal global />
+          <Header />
+          <main>
+            <Outlet />
+          </main>
+          <Footer />
+        </App>
+      </ConfigProvider>
+    </div>
   );
 };
 

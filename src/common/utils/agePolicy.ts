@@ -1,4 +1,4 @@
-export const getAgeBadge = (ageRequire?: string) => {
+export const getAgeBadge = (ageRequire?: string | number) => {
   if (!ageRequire)
     return {
       label: "P",
@@ -6,7 +6,7 @@ export const getAgeBadge = (ageRequire?: string) => {
       text: "Phổ biến",
       description: "Phim được phổ biến rộng rãi cho mọi đối tượng khán giả.",
     };
-  const age = ageRequire.toUpperCase().trim();
+  const age = String(ageRequire).toUpperCase().trim();
   if (age === "K")
     return {
       label: "K",

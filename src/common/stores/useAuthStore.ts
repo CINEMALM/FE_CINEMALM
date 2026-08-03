@@ -2,14 +2,19 @@ import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
 import { useShallow } from "zustand/shallow";
 import type { IUser } from "../types/user";
+import { setAccessToken } from "../utils/api";
 
 interface AuthState {
   openModal: boolean;
+  pendingPath: string | null;
+  pendingAction: (() => void) | null;
   user: IUser | null;
-  token: string | null;
-  login: (user: IUser | null, token: string) => void;
-  logout: () => void;
+  isAuthenticated: boolean;
+  setUser: (user: IUser | null) => void;
+  clearAuth: () => void;
   setOpenModal: (e: boolean) => void;
+  requestLogin: (options?: { path?: string; action?: () => void }) => void;
+  clearPendingLogin: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -17,13 +22,45 @@ export const useAuthStore = create<AuthState>()(
     persist(
       (set) => ({
         openModal: false,
+        pendingPath: null,
+        pendingAction: null,
         user: null,
-        token: null,
-        login: (user, token) => set({ user, token }),
-        logout: () => set({ user: null, token: null }),
+        isAuthenticated: false,
+        setUser: (user) => set({ user, isAuthenticated: Boolean(user) }),
+        clearAuth: () => {
+          setAccessToken(null);
+          set({
+            user: null,
+            isAuthenticated: false,
+            openModal: false,
+            pendingPath: null,
+            pendingAction: null,
+          });
+        },
         setOpenModal: (open) => set({ openModal: open }),
+        requestLogin: (options) =>
+          set({
+            openModal: true,
+            pendingPath: options?.path || null,
+            pendingAction: options?.action || null,
+          }),
+        clearPendingLogin: () =>
+          set({
+            openModal: false,
+            pendingPath: null,
+            pendingAction: null,
+          }),
       }),
-      { name: "Auth" },
+      {
+        name: "Auth",
+        partialize: (state) => ({
+          user: state.user,
+          isAuthenticated: state.isAuthenticated,
+          // Keep the intended path across an external OAuth redirect.
+          // clearAuth always removes it on logout.
+          pendingPath: state.pendingPath,
+        }),
+      },
     ),
     { name: "Auth" },
   ),

@@ -1,5 +1,5 @@
 import type { ICategory } from "./category";
-import type { IShowtime } from "./showtime";
+import type { IShowtime, IShowtimeFormat } from "./showtime";
 
 export interface IMovie {
   _id: string;
@@ -14,15 +14,17 @@ export interface IMovie {
   ageRequire: "P" | "K" | "C13" | "C16" | "C18";
   duration: number;
   statusRelease: "upcoming" | "nowShowing" | "released";
-  releaseDate: Date;
-  endDate: Date;
+  releaseDate: Date | string;
+  endDate: Date | string;
   isFeatured: boolean;
   status: boolean;
   country: string;
   language: string;
   subLanguage: string;
+  availableProjectionFormats?: IShowtimeFormat[];
   createdAt?: string;
   updatedAt?: string;
+  showtimeCount?: number;
 }
 
 export interface IMovieShowtime extends IMovie {
