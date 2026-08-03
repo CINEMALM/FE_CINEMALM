@@ -17,6 +17,19 @@ export interface ITicketItem {
   type: string;
 }
 
+export interface ITicketProductItem {
+  _id: string;
+  productVariantId: string | null;
+  productName: string;
+  variantName: string;
+  sku: string;
+  unitPrice: number;
+  quantity: number;
+  totalPrice: number;
+  isGift: boolean;
+  status: string;
+}
+
 export interface ITicket {
   _id: string;
   userId: string;
@@ -32,8 +45,15 @@ export interface ITicket {
   roomName: string;
   projectionFormat: IShowtimeFormat;
   items: ITicketItem[];
+  productItems?: ITicketProductItem[];
   startTime: string;
   totalPrice: number;
+  seatAmount?: number;
+  productAmount?: number;
+  subtotalAmount?: number;
+  promotionDiscountAmount?: number;
+  discountAmount?: number;
+  appliedVoucherCode?: string | null;
   paidAt?: string | null;
   usedAt?: string | null;
   expiresAt?: string | null;

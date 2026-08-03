@@ -5,8 +5,8 @@ import {
 } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
-import { useCallback, useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useParams } from "react-router";
 import { DAYOFWEEK_LABEL } from "../../../../../common/constants/dayOfWeek";
 import { QUERYKEY } from "../../../../../common/constants/queryKey";
 import { getShowtimeWeekday } from "../../../../../common/services/showtime.service";
@@ -15,6 +15,7 @@ import type { IRoom } from "../../../../../common/types/room";
 import type {
   IBookingClosedReason,
   IShowtime,
+  IShowtimeFormat,
 } from "../../../../../common/types/showtime";
 import GuideSeat from "./GuideSeat";
 import ModalSelectRoom from "./ModalSelectRoom";
@@ -46,10 +47,12 @@ const bookingClosedLabel = (reason?: IBookingClosedReason | null) =>
   reason ? bookingClosedLabels[reason] || "Đóng bán" : "Đóng bán";
 
 const ShowtimePicker = () => {
-  const navigate = useNavigate();
   const { id, showtimeId, roomId } = useParams();
   const [page, setPage] = useState(1);
   const [selectedDate, setSelectedDate] = useState<string>();
+  const [selectedFormat, setSelectedFormat] = useState<IShowtimeFormat | "ALL">(
+    "ALL",
+  );
   const [selectionByDate, setSelectionByDate] = useState<
     Record<string, { showtime: IShowtime; room: IRoom }>
   >({});
@@ -72,8 +75,39 @@ const ShowtimePicker = () => {
   });
 
   const groupedShowtimes = data?.data;
-  const dates = groupedShowtimes ? Object.keys(groupedShowtimes) : [];
-  const showtimes = selectedDate ? groupedShowtimes?.[selectedDate] || [] : [];
+  const dates = useMemo(
+    () => (groupedShowtimes ? Object.keys(groupedShowtimes) : []),
+    [groupedShowtimes],
+  );
+  const allShowtimes = useMemo(
+    () => (selectedDate ? groupedShowtimes?.[selectedDate] || [] : []),
+    [groupedShowtimes, selectedDate],
+  );
+  const availableFormats = useMemo(() => {
+    const formats = new Set<IShowtimeFormat>();
+    allShowtimes.forEach((showtime) => {
+      formats.add(showtime.projectionFormat);
+      showtime.externalRoom?.forEach((room) => {
+        if (room.showtimeProjectionFormat) {
+          formats.add(room.showtimeProjectionFormat);
+        }
+      });
+    });
+    return Array.from(formats);
+  }, [allShowtimes]);
+  const showtimes = useMemo(
+    () =>
+      selectedFormat === "ALL"
+        ? allShowtimes
+        : allShowtimes.filter(
+            (showtime) =>
+              showtime.projectionFormat === selectedFormat ||
+              showtime.externalRoom?.some(
+                (room) => room.showtimeProjectionFormat === selectedFormat,
+              ),
+          ),
+    [allShowtimes, selectedFormat],
+  );
   const selectedShowtimeForDate = selectedDate
     ? selectionByDate[selectedDate]?.showtime
     : undefined;
@@ -122,15 +156,8 @@ const ShowtimePicker = () => {
         return { ...current, [date]: { showtime, room } };
       });
       setInformation({ showtime, room, seat: [], totalPrice: 0 });
-      if (showtimeId !== showtime._id || roomId !== room._id) {
-        navigate(
-          `/movie/${id}/${showtime._id}/${room._id}?hour=${dayjs(
-            showtime.startTime,
-          ).format("HH:mm")}&movieId=${id}`,
-        );
-      }
     },
-    [id, navigate, roomId, setInformation, showtimeId],
+    [setInformation],
   );
 
   useEffect(() => {
@@ -184,21 +211,58 @@ const ShowtimePicker = () => {
     selectShowtime(showtime, room);
   };
 
+  const getFirstOpenVariant = useCallback(
+    (items: IShowtime[], format: IShowtimeFormat | "ALL") => {
+      for (const item of items) {
+        if (!item.isBookingOpen) continue;
+        const rooms = [item.roomId, ...(item.externalRoom || [])];
+        const room =
+          rooms.find(
+            (candidate) =>
+              format === "ALL" ||
+              (candidate.showtimeProjectionFormat || item.projectionFormat) ===
+                format,
+          ) || (format === "ALL" ? item.roomId : undefined);
+
+        if (!room) continue;
+        return {
+          showtime: {
+            ...item,
+            _id: room.showtimeId || item._id,
+            roomId: room,
+            price: room.showtimePrice || item.price,
+            projectionFormat:
+              room.showtimeProjectionFormat || item.projectionFormat,
+          },
+          room,
+        };
+      }
+      return undefined;
+    },
+    [],
+  );
+
   const selectDate = (date: string) => {
     setSelectedDate(date);
+    setSelectedFormat("ALL");
 
-    const firstOpenShowtime = groupedShowtimes?.[date]?.find(
-      (showtime) => showtime.isBookingOpen,
+    const firstOpenVariant = getFirstOpenVariant(
+      groupedShowtimes?.[date] || [],
+      "ALL",
     );
-
-    if (firstOpenShowtime) {
-      selectShowtime(firstOpenShowtime, firstOpenShowtime.roomId);
+    if (firstOpenVariant) {
+      selectShowtime(firstOpenVariant.showtime, firstOpenVariant.room);
     }
+  };
+
+  const selectFormat = (format: IShowtimeFormat | "ALL") => {
+    setSelectedFormat(format);
   };
 
   const changeWeek = (nextPage: number) => {
     setPage(nextPage);
     setSelectedDate(undefined);
+    setSelectedFormat("ALL");
   };
 
   return (
@@ -280,12 +344,63 @@ const ShowtimePicker = () => {
             </div>
 
             <div className="mt-7 border border-white/10 bg-[#141414] p-4 sm:p-5">
-              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#9A9A9A]">
-                Suất chiếu ngày{" "}
-                {selectedDate && dayjs(selectedDate).format("DD/MM/YYYY")}
-              </p>
+              <div className="flex flex-col gap-4 border-b border-white/10 pb-4 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#9A9A9A]">
+                    Suất chiếu ngày{" "}
+                    {selectedDate && dayjs(selectedDate).format("DD/MM/YYYY")}
+                  </p>
+                  <p className="mt-1 text-xs text-[#666]">
+                    Chọn định dạng để xem các suất phù hợp
+                  </p>
+                </div>
+                <div
+                  className="flex flex-wrap gap-2"
+                  aria-label="Lọc theo định dạng"
+                >
+                  {(["ALL", ...availableFormats] as const).map((format) => (
+                    <button
+                      key={format}
+                      type="button"
+                      aria-pressed={selectedFormat === format}
+                      onClick={() => selectFormat(format)}
+                      className={`min-h-9 border px-4 text-[10px] font-black uppercase tracking-[0.12em] transition ${
+                        selectedFormat === format
+                          ? "border-[#DC0000] bg-[#DC0000] text-[#0A0A0A]"
+                          : "border-white/10 text-[#9A9A9A] hover:border-[#DC0000] hover:text-[#F2F2F2]"
+                      }`}
+                    >
+                      {format === "ALL" ? "Tất cả" : format}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="mt-4 flex flex-wrap gap-2">
                 {showtimes.map((showtime) => {
+                  const rooms = [
+                    showtime.roomId,
+                    ...(showtime.externalRoom || []),
+                  ].filter(
+                    (room, index, items) =>
+                      items.findIndex(
+                        (candidate) =>
+                          candidate._id === room._id &&
+                          candidate.showtimeId === room.showtimeId,
+                      ) === index &&
+                      (selectedFormat === "ALL" ||
+                        (room.showtimeProjectionFormat ||
+                          showtime.projectionFormat) === selectedFormat),
+                  );
+                  const firstRoom = rooms[0] || showtime.roomId;
+                  const actualShowtime = {
+                    ...showtime,
+                    _id: firstRoom.showtimeId || showtime._id,
+                    roomId: firstRoom,
+                    price: firstRoom.showtimePrice || showtime.price,
+                    projectionFormat:
+                      firstRoom.showtimeProjectionFormat ||
+                      showtime.projectionFormat,
+                  };
                   const isSelected = Boolean(
                     showtime._id === selectedShowtimeForDate?._id ||
                       showtime.externalRoom?.some(
@@ -295,11 +410,11 @@ const ShowtimePicker = () => {
                   );
                   const isClosed = !showtime.isBookingOpen;
 
-                  return (showtime.externalRoom?.length || 0) > 1 ? (
+                  return rooms.length > 1 ? (
                     <ModalSelectRoom
                       key={showtime._id}
                       showtime={showtime}
-                      room={showtime.externalRoom as IRoom[]}
+                      room={rooms}
                       onSelect={handleSelectShowtime}
                     >
                       <button
@@ -333,7 +448,7 @@ const ShowtimePicker = () => {
                           : undefined
                       }
                       onClick={() =>
-                        handleSelectShowtime(showtime, showtime.roomId as IRoom)
+                        handleSelectShowtime(actualShowtime, firstRoom)
                       }
                       className={showtimeButtonClass(isSelected, isClosed)}
                     >
@@ -341,11 +456,16 @@ const ShowtimePicker = () => {
                       <span className="text-[10px] font-black uppercase opacity-80">
                         {isClosed
                           ? bookingClosedLabel(showtime.bookingClosedReason)
-                          : showtime.projectionFormat}
+                          : actualShowtime.projectionFormat}
                       </span>
                     </button>
                   );
                 })}
+                {!showtimes.length && (
+                  <p className="py-3 text-sm text-[#9A9A9A]">
+                    Không có suất chiếu thuộc định dạng này.
+                  </p>
+                )}
               </div>
             </div>
           </>

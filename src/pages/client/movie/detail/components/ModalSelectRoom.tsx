@@ -1,7 +1,6 @@
 import { Modal } from "antd";
 import dayjs from "dayjs";
 import React, { useState, type ReactElement } from "react";
-import { useParams } from "react-router";
 import { useAuthNavigate } from "../../../../../common/hooks/useAuthNavigate";
 import { useCheckoutSelector } from "../../../../../common/stores/useCheckoutStore";
 import type { IRoom } from "../../../../../common/types/room";
@@ -22,8 +21,7 @@ const ModalSelectRoom = ({
 }) => {
   const [open, setOpen] = useState(false);
   const setInformation = useCheckoutSelector((state) => state.setInformation);
-  const { id } = useParams();
-  const nav = useAuthNavigate();
+  const navigateWithAuth = useAuthNavigate();
   return (
     <>
       {React.cloneElement(children, {
@@ -54,11 +52,21 @@ const ModalSelectRoom = ({
                     item.showtimeProjectionFormat || showtime.projectionFormat,
                 };
                 setOpen(false);
-                nav(
-                  `/movie/${movieId ? movieId : id}/${selectedShowtime._id}/${item._id}?hour=${dayjs(showtime.startTime).format("HH:mm")}&movieId=${showtime.movieId._id}`,
-                );
-                setInformation({ showtime: selectedShowtime, room: item });
-                onSelect?.(selectedShowtime, item);
+                if (onSelect) {
+                  onSelect(selectedShowtime, item);
+                } else {
+                  setInformation({
+                    showtime: selectedShowtime,
+                    room: item,
+                    seat: [],
+                    totalPrice: 0,
+                  });
+                  navigateWithAuth(
+                    `/movie/${movieId || showtime.movieId._id}/${selectedShowtime._id}/${item._id}?hour=${dayjs(
+                      showtime.startTime,
+                    ).format("HH:mm")}&movieId=${showtime.movieId._id}`,
+                  );
+                }
               }}
               className="min-h-11 w-full border border-white/10 px-3 text-sm font-bold text-[#F2F2F2] transition hover:border-[#DC0000] hover:bg-[#DC0000] hover:text-[#0A0A0A]"
             >

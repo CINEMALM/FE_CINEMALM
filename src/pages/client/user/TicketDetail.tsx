@@ -168,6 +168,41 @@ const TicketDetail = () => {
             <Descriptions.Item label="Ghế">
               {item.items.map((seat) => seat.seatLabel).join(", ")}
             </Descriptions.Item>
+            {item.productItems?.some((product) => !product.isGift) && (
+              <Descriptions.Item label="Bắp nước / Combo">
+                {item.productItems
+                  .filter((product) => !product.isGift)
+                  .map(
+                    (product) =>
+                      `${product.productName} ${product.variantName} x${product.quantity}`,
+                  )
+                  .join(", ")}
+              </Descriptions.Item>
+            )}
+            {item.productItems?.some((product) => product.isGift) && (
+              <Descriptions.Item label="Quà tặng nhận tại quầy">
+                {item.productItems
+                  .filter((product) => product.isGift)
+                  .map(
+                    (product) =>
+                      `${product.productName} ${product.variantName} x${product.quantity}`,
+                  )
+                  .join(", ")}
+              </Descriptions.Item>
+            )}
+            <Descriptions.Item label="Tiền vé">
+              {formatCurrency(item.seatAmount ?? item.totalPrice)}
+            </Descriptions.Item>
+            {Boolean(item.productAmount) && (
+              <Descriptions.Item label="Bắp nước">
+                {formatCurrency(item.productAmount || 0)}
+              </Descriptions.Item>
+            )}
+            {Boolean(item.discountAmount) && (
+              <Descriptions.Item label="Giảm giá">
+                -{formatCurrency(item.discountAmount || 0)}
+              </Descriptions.Item>
+            )}
             <Descriptions.Item label="Tổng tiền">
               {formatCurrency(item.totalPrice)}
             </Descriptions.Item>

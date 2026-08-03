@@ -6,10 +6,10 @@ export const SEAT_STATUS = {
 };
 
 export const SEAT_STATUS_COLOR = {
-  [SEAT_STATUS.HOLD]: "#10b981",
-  [SEAT_STATUS.MYHOLD]: "#3b82f6",
-  [SEAT_STATUS.BOOKED]: "#ef4444",
-  [SEAT_STATUS.MYBOOKED]: "#8b5cf6",
+  [SEAT_STATUS.HOLD]: "#38BDF8",
+  [SEAT_STATUS.MYHOLD]: "#075985",
+  [SEAT_STATUS.BOOKED]: "#F04420",
+  [SEAT_STATUS.MYBOOKED]: "#FACC15",
 };
 
 export const SEAT_TYPE: Record<string, string> = {

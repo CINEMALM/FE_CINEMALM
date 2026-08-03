@@ -58,12 +58,31 @@ interface BackendTicketItem {
   price: number | string;
 }
 
+interface BackendTicketProductItem {
+  id: number | string;
+  product_variant_id?: number | string | null;
+  product_name: string;
+  variant_name: string;
+  sku?: string | null;
+  unit_price: number | string;
+  quantity: number | string;
+  total_price: number | string;
+  is_gift?: boolean;
+  status?: string;
+}
+
 interface BackendTicket {
   id: number | string;
   user_id: number | string;
   ticket_code: string;
   showtime_id: number | string;
   total_price: number | string;
+  seat_amount?: number | string;
+  product_amount?: number | string;
+  subtotal_amount?: number | string;
+  promotion_discount_amount?: number | string;
+  discount_amount?: number | string;
+  applied_voucher_code?: string | null;
   payment_status: ITicket["paymentStatus"];
   status: ITicket["status"];
   customer_name?: string;
@@ -81,6 +100,7 @@ interface BackendTicket {
   qr_code?: string | null;
   cancel_description?: string | null;
   items?: BackendTicketItem[];
+  product_items?: BackendTicketProductItem[];
   created_at: string;
   updated_at: string;
 }
@@ -121,6 +141,12 @@ const normalizeTicket = (ticket: BackendTicket): ITicket => ({
   ticketCode: ticket.ticket_code,
   showtimeId: String(ticket.showtime_id),
   totalPrice: Number(ticket.total_price || 0),
+  seatAmount: Number(ticket.seat_amount || ticket.total_price || 0),
+  productAmount: Number(ticket.product_amount || 0),
+  subtotalAmount: Number(ticket.subtotal_amount || ticket.total_price || 0),
+  promotionDiscountAmount: Number(ticket.promotion_discount_amount || 0),
+  discountAmount: Number(ticket.discount_amount || 0),
+  appliedVoucherCode: ticket.applied_voucher_code,
   paymentStatus: ticket.payment_status,
   status: ticket.status,
   customerName: ticket.customer_name || "",
@@ -143,6 +169,19 @@ const normalizeTicket = (ticket: BackendTicket): ITicket => ({
     seatLabel: item.seat_label,
     type: item.seat_type,
     price: Number(item.price),
+  })),
+  productItems: (ticket.product_items || []).map((item) => ({
+    _id: String(item.id),
+    productVariantId:
+      item.product_variant_id == null ? null : String(item.product_variant_id),
+    productName: item.product_name,
+    variantName: item.variant_name,
+    sku: item.sku || "",
+    unitPrice: Number(item.unit_price || 0),
+    quantity: Number(item.quantity || 0),
+    totalPrice: Number(item.total_price || 0),
+    isGift: Boolean(item.is_gift),
+    status: item.status || "pending",
   })),
   createdAt: ticket.created_at,
   updatedAt: ticket.updated_at,
@@ -189,12 +228,80 @@ export const releaseSeats = async (showtimeId: string, seatIds: string[]) => {
   return response.data.data;
 };
 
+export interface ProductVariant {
+  id: number | string;
+  name: string;
+  sku: string;
+  price: number | string;
+  is_active: boolean;
+}
+
+export interface ProductCatalogItem {
+  id: number | string;
+  name: string;
+  type: "popcorn" | "drink" | "combo" | "other";
+  description?: string | null;
+  image_url?: string | null;
+  variants: ProductVariant[];
+}
+
+export const getProducts = async () => {
+  const response =
+    await api.get<ApiResponse<ProductCatalogItem[]>>("/products");
+  return response.data.data;
+};
+
+export interface PromotionPreviewGiftItem {
+  product_variant_id?: number | string | null;
+  product_name: string;
+  variant_name: string;
+  quantity: number;
+  is_gift?: boolean;
+}
+
+export interface PromotionPreview {
+  seat_amount: number;
+  product_amount: number;
+  subtotal_amount: number;
+  promotion_discount_amount: number;
+  discount_amount: number;
+  total_amount: number;
+  applied_promotions: {
+    promotion_id: number;
+    code?: string | null;
+    name: string;
+    discount_amount: number;
+    gift_items: PromotionPreviewGiftItem[];
+  }[];
+  gift_items: PromotionPreviewGiftItem[];
+}
+
+export const previewPromotions = async (payload: {
+  showtimeId: string;
+  seatIds: string[];
+  productItems?: { product_variant_id: number; quantity: number }[];
+  voucherCode?: string;
+}) => {
+  const response = await api.post<ApiResponse<PromotionPreview>>(
+    "/promotions/preview",
+    {
+      showtime_id: Number(payload.showtimeId),
+      seat_ids: payload.seatIds.map(Number),
+      product_items: payload.productItems || [],
+      voucher_code: payload.voucherCode || undefined,
+    },
+  );
+  return response.data.data;
+};
+
 export const createBooking = async (payload: {
   showtimeId: string;
   seatIds: string[];
   customerName?: string;
   customerEmail?: string;
   customerPhone?: string;
+  productItems?: { product_variant_id: number; quantity: number }[];
+  voucherCode?: string;
 }) => {
   const response = await api.post<ApiResponse<BackendTicket>>("/bookings", {
     showtime_id: Number(payload.showtimeId),
@@ -202,6 +309,8 @@ export const createBooking = async (payload: {
     customer_name: payload.customerName,
     customer_email: payload.customerEmail,
     customer_phone: payload.customerPhone,
+    product_items: payload.productItems || [],
+    voucher_code: payload.voucherCode || undefined,
   });
   return normalizeTicket(response.data.data);
 };
