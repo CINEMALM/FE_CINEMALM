@@ -1,8 +1,5 @@
 import {
-  CalendarOutlined,
-  ClockCircleOutlined,
   CreditCardOutlined,
-  EnvironmentOutlined,
   FireOutlined,
   PlayCircleOutlined,
   RightOutlined,
@@ -12,22 +9,12 @@ import {
 } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { QUERYKEY } from "../../../common/constants/queryKey";
 import { getMovies } from "../../../common/services/movie.service";
 import type { ICategory } from "../../../common/types/category";
 import { getAgeBadge } from "../../../common/utils/agePolicy";
-
-const featuredMovie = {
-  title: "Dạ Khúc Đỏ",
-  subtitle: "Suất chiếu đặc biệt cuối tuần",
-  description:
-    "Một hành trình hồi hộp trong thành phố về đêm, nơi mỗi lựa chọn mở ra một bí mật mới. Đặt ghế đẹp trước khi suất chiếu lấp đầy.",
-  image:
-    "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=1800&q=85",
-  poster:
-    "https://images.unsplash.com/photo-1505686994434-e3cc5abf1330?auto=format&fit=crop&w=900&q=85",
-};
 
 const experiences = [
   {
@@ -48,6 +35,16 @@ const experiences = [
 ];
 
 const HomePage = () => {
+  const [activeBannerIndex, setActiveBannerIndex] = useState(0);
+  const featuredQuery = useQuery({
+    queryKey: [QUERYKEY.MOVIE, "HOME", "FEATURED"],
+    queryFn: () =>
+      getMovies({
+        is_featured: true,
+        per_page: 5,
+        sort: "release_date",
+      }),
+  });
   const nowShowingQuery = useQuery({
     queryKey: [QUERYKEY.MOVIE, "HOME", "NOW_SHOWING"],
     queryFn: () =>
@@ -68,156 +65,182 @@ const HomePage = () => {
   });
   const nowShowing = nowShowingQuery.data?.movies || [];
   const comingSoon = comingSoonQuery.data?.movies || [];
+  const featuredMovies = (featuredQuery.data?.movies || []).slice(0, 5);
+
+  useEffect(() => {
+    if (featuredMovies.length <= 1) return;
+
+    const timer = window.setInterval(() => {
+      setActiveBannerIndex((current) =>
+        current + 1 >= featuredMovies.length ? 0 : current + 1,
+      );
+    }, 6000);
+
+    return () => window.clearInterval(timer);
+  }, [featuredMovies.length]);
+
+  useEffect(() => {
+    if (activeBannerIndex >= featuredMovies.length) {
+      setActiveBannerIndex(0);
+    }
+  }, [activeBannerIndex, featuredMovies.length]);
 
   return (
     <div className="bg-[#0A0A0A] text-[#F2F2F2]">
       <section className="relative overflow-hidden border-b border-white/10">
-        <div className="absolute inset-0 opacity-45">
-          <img
-            src={featuredMovie.image}
-            alt=""
-            className="h-full w-full object-cover"
-          />
-        </div>
-        <div className="absolute inset-0 bg-[#0A0A0A]/72" />
+        {featuredMovies.length ? (
+          <div className="relative h-[70svh] min-h-[560px] max-h-[680px] lg:h-[80vh] lg:min-h-0 lg:max-h-none xl:h-[80vh]">
+            {featuredMovies.map((movie, index) => {
+              const ageBadge = getAgeBadge(movie.ageRequire);
+              const rawOffset = index - activeBannerIndex;
+              const halfLength = featuredMovies.length / 2;
+              const circularOffset =
+                rawOffset > halfLength
+                  ? rawOffset - featuredMovies.length
+                  : rawOffset < -halfLength
+                    ? rawOffset + featuredMovies.length
+                    : rawOffset;
+              const isActive = circularOffset === 0;
+              const isAdjacent = Math.abs(circularOffset) === 1;
 
-        <div className="relative mx-auto grid min-h-[calc(100vh-72px)] max-w-[1440px] items-center gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:px-10 lg:py-16">
-          <div className="max-w-3xl pt-8 lg:pt-0">
-            <p className="text-xs font-black uppercase tracking-[0.32em] text-[#DC0000]">
-              {featuredMovie.subtitle}
-            </p>
-            <h1 className="mt-5 font-display text-[3.5rem] font-bold leading-[0.95] tracking-normal text-[#F2F2F2] sm:text-[5rem] lg:text-[7rem]">
-              CinemaLM
-            </h1>
-            <p className="mt-6 max-w-2xl text-base leading-8 text-[#D8D8D8] sm:text-lg">
-              {featuredMovie.description}
-            </p>
-
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Link
-                to="/movie"
-                className="inline-flex h-[52px] items-center justify-center gap-3 bg-[#DC0000] px-6 text-sm font-black uppercase tracking-[0.16em] text-[#0A0A0A] transition hover:bg-[#F2F2F2]"
-              >
-                Đặt vé ngay
-                <RightOutlined />
-              </Link>
-              <button
-                type="button"
-                className="inline-flex h-[52px] items-center justify-center gap-3 border border-white/20 px-6 text-sm font-bold uppercase tracking-[0.16em] text-[#F2F2F2] transition hover:border-white/50"
-              >
-                <PlayCircleOutlined />
-                Xem trailer
-              </button>
-            </div>
-
-            <div className="mt-10 grid max-w-2xl grid-cols-3 border border-white/10 bg-[#141414]/80">
-              {[
-                ["24", "Suất hôm nay"],
-                ["08", "Rạp đối tác"],
-                ["4.9", "Đánh giá"],
-              ].map(([value, label]) => (
-                <div
-                  key={label}
-                  className="border-r border-white/10 p-4 last:border-r-0"
-                >
-                  <p className="font-display text-3xl font-bold text-[#F2F2F2]">
-                    {value}
-                  </p>
-                  <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#9A9A9A]">
-                    {label}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="hidden justify-end lg:flex">
-            <div className="w-full max-w-sm border border-white/10 bg-[#141414] p-3">
-              <img
-                src={featuredMovie.poster}
-                alt={featuredMovie.title}
-                className="aspect-[3/4] w-full object-cover"
-              />
-              <div className="p-5">
-                <p className="text-xs font-black uppercase tracking-[0.22em] text-[#9A9A9A]">
-                  Featured
-                </p>
-                <h2 className="mt-2 font-display text-3xl font-bold">
-                  {featuredMovie.title}
-                </h2>
-                <div className="mt-4 flex items-center justify-between text-sm text-[#9A9A9A]">
-                  <span>T16</span>
-                  <span>128 phút</span>
-                  <span className="text-[#F2F2F2]">
-                    <StarFilled className="mr-1 text-[#DC0000]" />
-                    9.2
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="relative z-10 mx-auto -mt-8 max-w-[1440px] px-4 sm:px-6 lg:px-10">
-        <div className="border border-white/10 bg-[#141414] p-4 shadow-2xl shadow-black/30 lg:p-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <p className="text-xs font-black uppercase tracking-[0.22em] text-[#DC0000]">
-                Đặt vé nhanh
-              </p>
-              <h2 className="mt-2 font-display text-2xl font-bold text-[#F2F2F2]">
-                Tìm suất chiếu phù hợp
-              </h2>
-            </div>
-            <div className="grid grid-cols-3 border border-white/10 text-xs font-bold uppercase tracking-[0.12em] text-[#9A9A9A]">
-              {["Theo phim", "Theo rạp", "Theo ngày"].map((tab, index) => (
-                <button
-                  key={tab}
-                  type="button"
-                  className={`h-11 px-3 transition ${
-                    index === 0
-                      ? "bg-[#DC0000] text-[#0A0A0A]"
-                      : "hover:text-[#F2F2F2]"
+              return (
+                <article
+                  key={movie._id}
+                  aria-hidden={!isActive}
+                  className={`absolute left-1/2 top-0 h-[70svh] min-h-[560px] max-h-[680px] w-[92%] overflow-hidden border-x border-white/10 transition-[transform,opacity,filter] duration-700 ease-in-out sm:w-[88%] lg:h-[80vh] lg:min-h-0 lg:max-h-none lg:w-[84%] xl:h-[80vh] xl:w-[82%] ${
+                    isActive
+                      ? "pointer-events-auto z-20 opacity-100"
+                      : isAdjacent
+                        ? "pointer-events-auto z-10 cursor-pointer opacity-55 brightness-50"
+                        : "pointer-events-none z-0 opacity-0"
                   }`}
+                  style={{
+                    transform: `translateX(calc(-50% + ${circularOffset * 78}%)) scale(${isActive ? 1 : 0.82})`,
+                  }}
+                  onClick={() => {
+                    if (isAdjacent) setActiveBannerIndex(index);
+                  }}
                 >
-                  {tab}
-                </button>
-              ))}
-            </div>
-          </div>
+                  <div className="absolute inset-0">
+                    <img
+                      src={movie.poster}
+                      alt=""
+                      className="absolute inset-0 block h-full w-full scale-110 object-cover object-center opacity-45 blur-sm"
+                    />
+                    <img
+                      src={movie.poster}
+                      alt={movie.name}
+                      className="absolute inset-0 block h-full w-full object-contain object-center lg:hidden"
+                    />
+                  </div>
+                  <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/20 to-black/90 lg:hidden" />
+                  <div className="absolute inset-0 hidden bg-[#0A0A0A]/72 lg:block" />
 
-          <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-[1.2fr_1fr_1fr_1fr_auto]">
-            {[
-              ["Chọn phim", "Màn Đêm Thức Giấc", PlayCircleOutlined],
-              ["Ngày chiếu", "Hôm nay, 13/07", CalendarOutlined],
-              ["Rạp", "CinemaLM Nam Từ Liêm", EnvironmentOutlined],
-              ["Suất", "19:10", ClockCircleOutlined],
-            ].map(([label, value, Icon]) => (
-              <button
-                key={label as string}
-                type="button"
-                className="flex h-16 items-center gap-3 border border-white/10 bg-[#0A0A0A] px-4 text-left transition hover:border-white/30"
-              >
-                <Icon className="text-[#DC0000]" />
-                <span className="min-w-0">
-                  <span className="block text-[10px] font-bold uppercase tracking-[0.18em] text-[#9A9A9A]">
-                    {label as string}
-                  </span>
-                  <span className="mt-1 block truncate text-sm font-semibold text-[#F2F2F2]">
-                    {value as string}
-                  </span>
-                </span>
-              </button>
-            ))}
-            <Link
-              to="/movie"
-              className="inline-flex h-16 items-center justify-center bg-[#DC0000] px-6 text-sm font-black uppercase tracking-[0.14em] text-[#0A0A0A] transition hover:bg-[#F2F2F2] md:col-span-2 xl:col-span-1"
-            >
-              Tìm vé
-            </Link>
+                  <div className="relative mx-auto flex h-full max-w-[1440px] items-end px-4 pb-20 pt-8 sm:px-6 lg:grid lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:gap-8 lg:px-8 lg:pb-20 lg:pt-12 xl:gap-10 xl:px-10 xl:pb-24 xl:pt-16">
+                    <div className="relative w-full max-w-4xl overflow-hidden border border-white/10 bg-black/35 p-4 shadow-2xl shadow-black/40 backdrop-blur-md sm:p-5 lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none lg:backdrop-blur-none xl:p-0">
+                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/55 via-black/25 to-transparent lg:hidden" />
+                      <div className="relative z-10">
+                        <h1 className="font-display text-[1.75rem] font-bold leading-tight text-[#F2F2F2] sm:text-[2.5rem] lg:text-[3rem] lg:leading-tight xl:text-[4rem]">
+                          {movie.name}
+                        </h1>
+                        <p className="mt-3 line-clamp-2 max-w-2xl text-sm leading-6 text-[#D8D8D8] sm:mt-4 sm:text-base lg:mt-5 lg:line-clamp-3 lg:text-base lg:leading-7 xl:max-w-xl">
+                          {movie.description ||
+                            "Khám phá bộ phim nổi bật đang được trình chiếu tại CinemaLM."}
+                        </p>
+
+                        <div className="mt-4 flex flex-row gap-2 sm:mt-6 sm:gap-3 md:mt-8">
+                          <Link
+                            to={`/movie/${movie._id}`}
+                            className="inline-flex h-11 flex-1 items-center justify-center gap-2 bg-[#DC0000] px-3 text-[10px] font-black uppercase tracking-[0.1em] text-[#0A0A0A] transition hover:bg-[#F2F2F2] sm:text-xs lg:h-[52px] lg:flex-none lg:gap-3 lg:px-6 lg:text-sm lg:tracking-[0.16em]"
+                          >
+                            Đặt vé ngay
+                            <RightOutlined />
+                          </Link>
+                          <Link
+                            to={`/movie/${movie._id}`}
+                            className="inline-flex h-11 flex-1 items-center justify-center gap-2 border border-white/20 px-3 text-[10px] font-bold uppercase tracking-[0.1em] text-[#F2F2F2] transition hover:border-white/50 sm:text-xs lg:h-[52px] lg:flex-none lg:gap-3 lg:px-6 lg:text-sm lg:tracking-[0.16em]"
+                          >
+                            <PlayCircleOutlined />
+                            Xem chi tiết
+                          </Link>
+                        </div>
+
+                        <div className="mt-4 grid max-w-2xl grid-cols-3 border border-white/10 bg-[#141414]/80 sm:mt-6 lg:mt-10">
+                          {[
+                            [ageBadge.label, "Phân loại"],
+                            [`${movie.duration} phút`, "Thời lượng"],
+                            [String(movie.rating), "Đánh giá"],
+                          ].map(([value, label]) => (
+                            <div
+                              key={label}
+                              className="border-r border-white/10 p-2 last:border-r-0 sm:p-3 lg:p-4"
+                            >
+                              <p className="font-display text-base font-bold text-[#F2F2F2] sm:text-xl lg:text-3xl">
+                                {value}
+                              </p>
+                              <p className="mt-1 text-[8px] font-bold uppercase tracking-[0.1em] text-[#9A9A9A] sm:text-[9px] lg:text-[10px] lg:tracking-[0.18em]">
+                                {label}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="hidden justify-end lg:flex">
+                      <div className="w-full max-w-[260px] border border-white/10 bg-[#141414] p-2 xl:max-w-sm xl:p-3">
+                        <img
+                          src={movie.poster}
+                          alt={movie.name}
+                          className="aspect-[2/3] w-full object-cover"
+                        />
+                        <div className="p-4 xl:p-5">
+                          <h2 className="line-clamp-2 font-display text-xl font-bold xl:text-3xl">
+                            {movie.name}
+                          </h2>
+                          <div className="mt-3 flex items-center justify-between text-xs text-[#9A9A9A] xl:mt-4 xl:text-sm">
+                            <span>{ageBadge.label}</span>
+                            <span>{movie.duration} phút</span>
+                            <span className="text-[#F2F2F2]">
+                              <StarFilled className="mr-1 text-[#DC0000]" />
+                              {movie.rating}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
           </div>
-        </div>
+        ) : (
+          <div className="flex min-h-[calc(100vh-72px)] items-center justify-center px-4 text-center text-[#9A9A9A]">
+            {featuredQuery.isLoading
+              ? "Đang tải phim nổi bật..."
+              : "Chưa có phim nổi bật."}
+          </div>
+        )}
+
+        {featuredMovies.length > 0 && (
+          <div className="absolute bottom-7 left-1/2 z-20 flex -translate-x-1/2 items-center gap-3">
+            {featuredMovies.map((movie, index) => (
+              <button
+                key={movie._id}
+                type="button"
+                aria-label={`Hiển thị banner phim ${movie.name}`}
+                aria-current={index === activeBannerIndex ? "true" : undefined}
+                onClick={() => setActiveBannerIndex(index)}
+                className={`block h-3 w-3 shrink-0 appearance-none border p-0 transition-all ${
+                  index === activeBannerIndex
+                    ? "scale-110 border-[#DC0000] bg-[#DC0000]"
+                    : "border-[#DC0000]/45 bg-transparent hover:border-[#DC0000]"
+                }`}
+                style={{ borderRadius: "9999px" }}
+              />
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="mx-auto max-w-[1440px] px-4 py-16 sm:px-6 lg:px-10 lg:py-24">
