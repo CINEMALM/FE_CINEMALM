@@ -1,23 +1,85 @@
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Button, Empty, Modal, Select, Switch } from "antd";
+import { Alert, Button, Empty, InputNumber, Modal, Select, Switch } from "antd";
 import axios from "axios";
 import { useState } from "react";
 import { Link, useParams } from "react-router";
-import { seatTypeColor } from "../../common/constants";
 import { adminService } from "../../common/services/admin.service";
 import type { ISeat } from "../../common/types/seat";
+import SeatIcon from "../../components/SeatIcon";
+
+type SeatType = ISeat["type"];
+type LayoutPreset =
+  | "standard"
+  | "normal_only"
+  | "vip_center"
+  | "premium"
+  | "custom";
+type SeatZone = {
+  row_from: number;
+  row_to: number;
+  col_from: number;
+  col_to: number;
+  type: SeatType;
+};
+
+const AVAILABLE_SEAT_COLOR = "#70737C";
+
+const seatTypeOptions: Array<{ value: SeatType; label: string }> = [
+  { value: "NORMAL", label: "Ghế thường" },
+  { value: "VIP", label: "Ghế VIP" },
+  { value: "COUPLE", label: "Ghế đôi" },
+];
+
+const presetOptions: Array<{
+  value: LayoutPreset;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "standard",
+    label: "Chuẩn rạp",
+    description: "Hàng trước ghế thường, hàng giữa VIP, hàng cuối ghế đôi.",
+  },
+  {
+    value: "vip_center",
+    label: "VIP giữa phòng",
+    description: "Hai bên ghế thường, khu trung tâm là VIP.",
+  },
+  {
+    value: "premium",
+    label: "Premium",
+    description: "Nhiều hàng VIP và 2 hàng cuối ghế đôi.",
+  },
+  {
+    value: "normal_only",
+    label: "Toàn ghế thường",
+    description: "Dùng cho phòng nhỏ hoặc demo đơn giản.",
+  },
+  {
+    value: "custom",
+    label: "Tự chia vùng",
+    description: "Tự chọn hàng/cột cho từng loại ghế.",
+  },
+];
+
+const defaultZones: SeatZone[] = [
+  { row_from: 1, row_to: 3, col_from: 1, col_to: 12, type: "NORMAL" },
+  { row_from: 4, row_to: 6, col_from: 1, col_to: 12, type: "VIP" },
+  { row_from: 7, row_to: 8, col_from: 1, col_to: 12, type: "COUPLE" },
+];
 
 const AdminSeatLayout = () => {
   const { roomId = "" } = useParams();
-  const [generateType, setGenerateType] = useState<ISeat["type"]>("NORMAL");
+  const [layoutPreset, setLayoutPreset] = useState<LayoutPreset>("standard");
+  const [customZones, setCustomZones] = useState<SeatZone[]>(defaultZones);
   const [generateConfirmOpen, setGenerateConfirmOpen] = useState(false);
   const [generateMessage, setGenerateMessage] = useState<{
     type: "success" | "error";
     content: string;
   } | null>(null);
   const [editingSeat, setEditingSeat] = useState<ISeat | null>(null);
-  const [editType, setEditType] = useState<ISeat["type"]>("NORMAL");
+  const [editType, setEditType] = useState<SeatType>("NORMAL");
   const [editStatus, setEditStatus] = useState(true);
   const queryClient = useQueryClient();
   const queryKey = ["ADMIN", "SEAT_LAYOUT", roomId];
@@ -26,54 +88,19 @@ const AdminSeatLayout = () => {
     queryFn: () => adminService.seatLayout(roomId),
     enabled: Boolean(roomId),
   });
-  const generate = useMutation({
-    mutationFn: () => adminService.generateSeats(roomId, generateType),
-    onSuccess: async () => {
-      setGenerateConfirmOpen(false);
-      setGenerateMessage({
-        type: "success",
-        content: "Đã sinh sơ đồ ghế thành công.",
-      });
-      await queryClient.invalidateQueries({ queryKey });
-    },
-    onError: (error) => {
-      const responseMessage = axios.isAxiosError(error)
-        ? error.response?.data?.message
-        : undefined;
-      setGenerateMessage({
-        type: "error",
-        content:
-          responseMessage ||
-          "Không thể sinh sơ đồ ghế. Vui lòng kiểm tra lại phòng và đăng nhập admin.",
-      });
-    },
-  });
-  const update = useMutation({
-    mutationFn: ({
-      seatId,
-      payload,
-    }: {
-      seatId: string;
-      payload: Pick<ISeat, "type" | "status" | "span">;
-    }) => adminService.updateSeat(seatId, payload),
-    onSuccess: async () => {
-      setEditingSeat(null);
-      setGenerateMessage({
-        type: "success",
-        content: "Đã cập nhật ghế thành công.",
-      });
-      await queryClient.invalidateQueries({ queryKey });
-    },
-    onError: (error) => {
-      const responseMessage = axios.isAxiosError(error)
-        ? error.response?.data?.message
-        : undefined;
-      setGenerateMessage({
-        type: "error",
-        content: responseMessage || "Không thể cập nhật ghế.",
-      });
-    },
-  });
+
+  const roomRows = query.data?.room.rows || 1;
+  const roomCols = query.data?.room.cols || 1;
+  const selectedPreset = presetOptions.find(
+    (item) => item.value === layoutPreset,
+  );
+  const normalizedCustomZones = customZones.map((zone) => ({
+    ...zone,
+    row_from: Math.min(Math.max(zone.row_from, 1), roomRows),
+    row_to: Math.min(Math.max(zone.row_to, 1), roomRows),
+    col_from: Math.min(Math.max(zone.col_from, 1), roomCols),
+    col_to: Math.min(Math.max(zone.col_to, 1), roomCols),
+  }));
 
   const seats = query.data?.layout.flat() || [];
   const displaySeats =
@@ -91,6 +118,91 @@ const AdminSeatLayout = () => {
       });
     }) || [];
 
+  const generate = useMutation({
+    mutationFn: () =>
+      adminService.generateSeats(
+        roomId,
+        layoutPreset === "custom"
+          ? { zones: normalizedCustomZones }
+          : { preset: layoutPreset },
+      ),
+    onSuccess: async () => {
+      setGenerateConfirmOpen(false);
+      setGenerateMessage({
+        type: "success",
+        content: "Đã sinh sơ đồ ghế thành công.",
+      });
+      await queryClient.invalidateQueries({ queryKey });
+    },
+    onError: (error) => {
+      const response = axios.isAxiosError(error) ? error.response?.data : null;
+      const errors = response?.errors as Record<string, string[]> | undefined;
+      setGenerateMessage({
+        type: "error",
+        content:
+          (errors && Object.values(errors).flat()[0]) ||
+          response?.message ||
+          "Không thể sinh sơ đồ ghế. Vui lòng kiểm tra lại phòng và quyền admin.",
+      });
+    },
+  });
+
+  const update = useMutation({
+    mutationFn: ({
+      seatId,
+      payload,
+    }: {
+      seatId: string;
+      payload: Pick<ISeat, "type" | "status" | "span">;
+    }) => adminService.updateSeat(seatId, payload),
+    onSuccess: async () => {
+      setEditingSeat(null);
+      setGenerateMessage({
+        type: "success",
+        content: "Đã cập nhật ghế thành công.",
+      });
+      await queryClient.invalidateQueries({ queryKey });
+    },
+    onError: (error) => {
+      const response = axios.isAxiosError(error) ? error.response?.data : null;
+      const errors = response?.errors as Record<string, string[]> | undefined;
+      setGenerateMessage({
+        type: "error",
+        content:
+          (errors && Object.values(errors).flat()[0]) ||
+          response?.message ||
+          "Không thể cập nhật ghế.",
+      });
+    },
+  });
+
+  const updateZone = (index: number, payload: Partial<SeatZone>) => {
+    setCustomZones((current) =>
+      current.map((zone, zoneIndex) =>
+        zoneIndex === index ? { ...zone, ...payload } : zone,
+      ),
+    );
+  };
+
+  const addZone = () => {
+    setCustomZones((current) => [
+      ...current,
+      {
+        row_from: 1,
+        row_to: roomRows,
+        col_from: 1,
+        col_to: roomCols,
+        type: "NORMAL",
+      },
+    ]);
+  };
+
+  const removeZone = (index: number) => {
+    setCustomZones((current) =>
+      current.filter((_, zoneIndex) => zoneIndex !== index),
+    );
+  };
+
   const openSeatEditor = (seat: ISeat) => {
     setGenerateMessage(null);
     setEditingSeat(seat);
@@ -107,6 +219,7 @@ const AdminSeatLayout = () => {
         <ArrowLeftOutlined />
         Danh sách phòng
       </Link>
+
       <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.22em] text-[#DC0000]">
@@ -116,17 +229,17 @@ const AdminSeatLayout = () => {
             {query.data?.room.name || "Sơ đồ ghế"}
           </h1>
         </div>
+
         {!query.isLoading && seats.length === 0 && (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Select
-              value={generateType}
-              onChange={setGenerateType}
-              options={[
-                { value: "NORMAL", label: "Ghế thường" },
-                { value: "VIP", label: "Ghế VIP" },
-                { value: "COUPLE", label: "Ghế đôi" },
-              ]}
-              className="w-36"
+              value={layoutPreset}
+              onChange={setLayoutPreset}
+              options={presetOptions.map((item) => ({
+                value: item.value,
+                label: item.label,
+              }))}
+              className="w-52"
             />
             <Button
               type="primary"
@@ -141,6 +254,106 @@ const AdminSeatLayout = () => {
           </div>
         )}
       </div>
+
+      {!query.isLoading && seats.length === 0 && (
+        <section className="mt-4 border border-white/10 bg-[#101010] p-4">
+          <p className="text-sm font-bold text-[#F2F2F2]">
+            {selectedPreset?.label}
+          </p>
+          <p className="mt-1 text-xs text-[#9A9A9A]">
+            {selectedPreset?.description}
+          </p>
+
+          {layoutPreset === "custom" && (
+            <div className="mt-4 space-y-3">
+              {customZones.map((zone, index) => (
+                <div
+                  key={index}
+                  className="grid gap-3 border border-white/10 bg-[#0A0A0A] p-3 md:grid-cols-[1fr_1fr_1fr_1fr_160px_auto]"
+                >
+                  <div>
+                    <p className="mb-1 text-[10px] font-black uppercase text-[#9A9A9A]">
+                      Hàng từ
+                    </p>
+                    <InputNumber
+                      min={1}
+                      max={roomRows}
+                      value={zone.row_from}
+                      onChange={(value) =>
+                        updateZone(index, { row_from: Number(value || 1) })
+                      }
+                      className="w-full"
+                    />
+                  </div>
+                  <div>
+                    <p className="mb-1 text-[10px] font-black uppercase text-[#9A9A9A]">
+                      Hàng đến
+                    </p>
+                    <InputNumber
+                      min={1}
+                      max={roomRows}
+                      value={zone.row_to}
+                      onChange={(value) =>
+                        updateZone(index, { row_to: Number(value || 1) })
+                      }
+                      className="w-full"
+                    />
+                  </div>
+                  <div>
+                    <p className="mb-1 text-[10px] font-black uppercase text-[#9A9A9A]">
+                      Cột từ
+                    </p>
+                    <InputNumber
+                      min={1}
+                      max={roomCols}
+                      value={zone.col_from}
+                      onChange={(value) =>
+                        updateZone(index, { col_from: Number(value || 1) })
+                      }
+                      className="w-full"
+                    />
+                  </div>
+                  <div>
+                    <p className="mb-1 text-[10px] font-black uppercase text-[#9A9A9A]">
+                      Cột đến
+                    </p>
+                    <InputNumber
+                      min={1}
+                      max={roomCols}
+                      value={zone.col_to}
+                      onChange={(value) =>
+                        updateZone(index, { col_to: Number(value || 1) })
+                      }
+                      className="w-full"
+                    />
+                  </div>
+                  <div>
+                    <p className="mb-1 text-[10px] font-black uppercase text-[#9A9A9A]">
+                      Loại ghế
+                    </p>
+                    <Select
+                      value={zone.type}
+                      onChange={(value) => updateZone(index, { type: value })}
+                      options={seatTypeOptions}
+                      className="w-full"
+                    />
+                  </div>
+                  <Button danger onClick={() => removeZone(index)}>
+                    Xóa
+                  </Button>
+                </div>
+              ))}
+              <Button onClick={addZone}>Thêm vùng ghế</Button>
+              <Alert
+                type="info"
+                showIcon
+                message="Lưu ý ghế đôi"
+                description="Vùng ghế đôi phải bắt đầu ở cột lẻ và có số cột chẵn, ví dụ cột 1-12 hoặc 3-10."
+              />
+            </div>
+          )}
+        </section>
+      )}
 
       {generateMessage && (
         <Alert
@@ -171,9 +384,9 @@ const AdminSeatLayout = () => {
         ) : (
           <div className="overflow-x-auto pb-3">
             <div
-              className="mx-auto grid min-w-max gap-2"
+              className="mx-auto grid min-w-max items-center gap-x-3 gap-y-4"
               style={{
-                gridTemplateColumns: `repeat(${query.data?.room.cols}, 42px)`,
+                gridTemplateColumns: `repeat(${query.data?.room.cols}, 52px)`,
               }}
             >
               {displaySeats.map((seat) => (
@@ -182,15 +395,17 @@ const AdminSeatLayout = () => {
                   type="button"
                   title={`${seat.label} · ${seat.type}`}
                   onClick={() => openSeatEditor(seat)}
-                  className="flex h-10 items-center justify-center border border-white/10 text-[10px] font-bold text-white transition hover:brightness-125"
+                  className="group flex h-12 items-center justify-center text-[10px] font-bold text-white transition hover:brightness-125"
                   style={{
-                    backgroundColor: seat.status
-                      ? seatTypeColor[seat.type]
-                      : "#ef4444",
                     gridColumn: `span ${seat.span || 1}`,
                   }}
                 >
-                  {seat.label}
+                  <SeatIcon
+                    type={seat.type}
+                    color={seat.status ? AVAILABLE_SEAT_COLOR : "#ef4444"}
+                    label={seat.label}
+                    className="brightness-75 transition group-hover:brightness-100"
+                  />
                 </button>
               ))}
             </div>
@@ -199,7 +414,7 @@ const AdminSeatLayout = () => {
       </div>
 
       <Modal
-        title="Sinh toàn bộ sơ đồ ghế?"
+        title="Sinh sơ đồ ghế?"
         open={generateConfirmOpen}
         confirmLoading={generate.isPending}
         okText="Sinh sơ đồ"
@@ -207,10 +422,18 @@ const AdminSeatLayout = () => {
         onCancel={() => setGenerateConfirmOpen(false)}
         onOk={() => generate.mutate()}
       >
-        <p className="text-[#9A9A9A]">
-          Hệ thống sẽ gọi API để sinh toàn bộ ghế theo số hàng và số cột của
-          phòng. Sơ đồ chỉ có thể sinh tự động một lần.
-        </p>
+        <div className="space-y-3 text-[#9A9A9A]">
+          <p>
+            Hệ thống sẽ sinh toàn bộ ghế theo kích thước phòng. Sơ đồ chỉ được
+            sinh tự động một lần trước khi phòng có suất chiếu hoặc lịch sử vé.
+          </p>
+          <p>
+            Mẫu đang chọn:{" "}
+            <span className="font-bold text-[#F2F2F2]">
+              {selectedPreset?.label}
+            </span>
+          </p>
+        </div>
       </Modal>
 
       <Modal
@@ -241,15 +464,12 @@ const AdminSeatLayout = () => {
             <Select
               value={editType}
               className="w-full"
-              options={[
-                { value: "NORMAL", label: "Ghế thường" },
-                { value: "VIP", label: "Ghế VIP" },
-                {
-                  value: "COUPLE",
-                  label: "Ghế đôi",
-                  disabled: editingSeat?.col === query.data?.room.cols,
-                },
-              ]}
+              options={seatTypeOptions.map((option) => ({
+                ...option,
+                disabled:
+                  option.value === "COUPLE" &&
+                  editingSeat?.col === query.data?.room.cols,
+              }))}
               onChange={setEditType}
             />
             {editingSeat?.col === query.data?.room.cols && (
@@ -264,7 +484,7 @@ const AdminSeatLayout = () => {
                 Ghế khả dụng
               </p>
               <p className="mt-1 text-xs text-[#9A9A9A]">
-                Tắt để đánh dấu ghế không khả dụng.
+                Tắt để đánh dấu ghế không khả dụng hoặc phần ghế bị ghép.
               </p>
             </div>
             <Switch checked={editStatus} onChange={setEditStatus} />
