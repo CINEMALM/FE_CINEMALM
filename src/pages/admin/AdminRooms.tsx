@@ -7,6 +7,7 @@ import {
 } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  Alert,
   Button,
   Form,
   Input,
@@ -17,6 +18,7 @@ import {
   Switch,
   Table,
 } from "antd";
+import axios from "axios";
 import { useState } from "react";
 import { Link } from "react-router";
 import {
@@ -36,6 +38,7 @@ const AdminRooms = () => {
   const [keyword, setKeyword] = useState("");
   const [editing, setEditing] = useState<IRoom | null>(null);
   const [open, setOpen] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [form] = Form.useForm<RoomPayload>();
   const queryClient = useQueryClient();
   const query = useQuery({
@@ -49,10 +52,32 @@ const AdminRooms = () => {
         ? adminService.updateRoom(editing._id, payload)
         : adminService.createRoom(payload),
     onSuccess: async () => {
+      setSaveError("");
       setOpen(false);
       setEditing(null);
       form.resetFields();
       await queryClient.invalidateQueries({ queryKey: ["ADMIN"] });
+    },
+    onError: (error) => {
+      const response = axios.isAxiosError(error) ? error.response?.data : null;
+      const errors = response?.errors as Record<string, string[]> | undefined;
+
+      if (errors?.name?.length) {
+        form.setFields([
+          {
+            name: "name",
+            errors: ["Tên phòng đã tồn tại. Vui lòng chọn tên khác."],
+          },
+        ]);
+      }
+
+      setSaveError(
+        errors?.name?.length
+          ? "Tên phòng đã tồn tại. Vui lòng chọn tên khác."
+          : (errors && Object.values(errors).flat()[0]) ||
+              response?.message ||
+              "Không thể lưu phòng chiếu. Vui lòng kiểm tra lại thông tin.",
+      );
     },
   });
   const disable = useMutation({
@@ -61,6 +86,8 @@ const AdminRooms = () => {
   });
 
   const openForm = (room?: IRoom) => {
+    setSaveError("");
+    form.resetFields();
     setEditing(room || null);
     form.setFieldsValue(
       room
@@ -183,7 +210,11 @@ const AdminRooms = () => {
       <Modal
         title={editing ? "Cập nhật phòng" : "Thêm phòng"}
         open={open}
-        onCancel={() => setOpen(false)}
+        onCancel={() => {
+          setOpen(false);
+          setSaveError("");
+          form.resetFields();
+        }}
         onOk={() => form.submit()}
         confirmLoading={save.isPending}
       >
@@ -192,6 +223,16 @@ const AdminRooms = () => {
           layout="vertical"
           onFinish={(values) => save.mutate(values)}
         >
+          {saveError && (
+            <Alert
+              className="mb-4"
+              type="error"
+              showIcon
+              closable
+              message={saveError}
+              onClose={() => setSaveError("")}
+            />
+          )}
           <Form.Item name="name" label="Tên phòng" rules={[{ required: true }]}>
             <Input />
           </Form.Item>

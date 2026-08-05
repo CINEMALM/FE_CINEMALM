@@ -452,9 +452,10 @@ const normalizeTicket = (ticket: BackendTicket): ITicket => ({
 });
 
 export const adminService = {
-  async dashboardOverview() {
+  async dashboardOverview(params?: Record<string, unknown>) {
     const response = await api.get<ApiResponse<IAdminDashboardOverview>>(
       "/admin/dashboard/overview",
+      { params },
     );
     return response.data.data;
   },
@@ -566,8 +567,25 @@ export const adminService = {
       layout: response.data.data.layout.map((row) => row.map(normalizeSeat)),
     };
   },
-  async generateSeats(roomId: string, type: ISeat["type"]) {
-    await api.post(`/admin/rooms/${roomId}/seats/generate`, { type });
+  async generateSeats(
+    roomId: string,
+    payload:
+      | ISeat["type"]
+      | {
+          preset?: "standard" | "normal_only" | "vip_center" | "premium";
+          zones?: Array<{
+            row_from: number;
+            row_to: number;
+            col_from: number;
+            col_to: number;
+            type: ISeat["type"];
+          }>;
+        },
+  ) {
+    await api.post(
+      `/admin/rooms/${roomId}/seats/generate`,
+      typeof payload === "string" ? { type: payload } : payload,
+    );
   },
   async updateSeat(id: string, payload: Partial<ISeat>) {
     await api.patch(`/admin/seats/${id}`, payload);

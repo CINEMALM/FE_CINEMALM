@@ -27,6 +27,7 @@ const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const isAdmin = user?.role?.toLowerCase() === "admin";
+  const accountName = user?.userName?.trim() || "Tài khoản";
 
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
@@ -35,6 +36,12 @@ const Header = () => {
       document.body.style.overflow = "";
     };
   }, [open]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      setOpen(false);
+    }
+  }, [isAuthenticated]);
 
   const handleLogout = () => {
     setOpen(false);
@@ -119,7 +126,7 @@ const Header = () => {
                 to="/profile"
                 className={`h-11 max-w-44 truncate px-4 text-sm font-bold uppercase leading-[42px] tracking-[0.1em] ${outlineActionClass}`}
               >
-                {user?.userName || "Tài khoản"}
+                {accountName}
               </Link>
               <button
                 type="button"
@@ -237,9 +244,10 @@ const Header = () => {
                 <Link
                   to="/profile"
                   onClick={() => setOpen(false)}
-                  className="flex h-12 items-center justify-center border border-white/15 text-sm font-bold uppercase tracking-[0.14em] text-[#F2F2F2]"
+                  className={`flex h-12 min-w-0 items-center justify-center truncate px-3 text-sm font-bold uppercase tracking-[0.14em] ${outlineActionClass}`}
+                  title={accountName}
                 >
-                  Tài khoản
+                  {accountName}
                 </Link>
                 <button
                   type="button"
