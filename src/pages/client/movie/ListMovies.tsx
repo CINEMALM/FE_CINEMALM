@@ -11,12 +11,11 @@ import type { IMovie } from "../../../common/types/movie";
 import { getAgeBadge } from "../../../common/utils/agePolicy";
 import { adminService } from "../../../common/services/admin.service";
 
-type MovieStatusFilter = "nowShowing" | "upcoming" | "released";
+type MovieStatusFilter = "nowShowing" | "upcoming";
 
 const movieFilters: { label: string; value: MovieStatusFilter }[] = [
   { label: "Đang chiếu", value: "nowShowing" },
   { label: "Sắp chiếu", value: "upcoming" },
-  { label: "Đã chiếu", value: "released" },
 ];
 
 const statusContent: Record<
@@ -34,12 +33,6 @@ const statusContent: Record<
     title: "Phim sắp chiếu",
     description:
       "Theo dõi những bộ phim chuẩn bị ra mắt và cập nhật ngày khởi chiếu.",
-  },
-  released: {
-    eyebrow: "Released",
-    title: "Phim đã chiếu",
-    description:
-      "Khám phá lại những bộ phim đã kết thúc thời gian phát hành tại rạp.",
   },
 };
 
@@ -98,7 +91,7 @@ const ListMovies = () => {
           <p className="text-xs font-black uppercase tracking-[0.2em] text-[#DC0000]">
             Danh mục phim
           </p>
-          <div className="mt-4 grid grid-cols-3">
+          <div className="mt-4 grid grid-cols-2">
             {movieFilters.map((filter) => (
               <button
                 key={filter.value}
