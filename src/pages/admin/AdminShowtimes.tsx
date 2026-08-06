@@ -107,7 +107,13 @@ const AdminShowtimes = () => {
 
   const showtimes = useQuery({
     queryKey: ["ADMIN", "SHOWTIMES", page],
-    queryFn: () => adminService.showtimes({ page, per_page: 10 }),
+    queryFn: () =>
+      adminService.showtimes({
+        page,
+        per_page: 10,
+        sort: "created_at",
+        order: "desc",
+      }),
   });
   const movies = useQuery({
     queryKey: ["ADMIN", "SHOWTIME_FORM_MOVIES"],
@@ -132,6 +138,7 @@ const AdminShowtimes = () => {
       setOpen(false);
       setEditing(null);
       setServerError(null);
+      setPage(1);
       form.resetFields();
       await queryClient.invalidateQueries({
         queryKey: ["ADMIN", "SHOWTIMES"],
@@ -300,6 +307,9 @@ const AdminShowtimes = () => {
   };
 
   const renderActions = (record: IShowtime) => {
+    const isPublishingThisShowtime =
+      publish.isPending && publish.variables?._id === record._id;
+
     if (record.status === "draft") {
       return (
         <Space size="small">
@@ -309,7 +319,7 @@ const AdminShowtimes = () => {
           <Tooltip title="Công khai suất chiếu cho khách đặt vé">
             <Button
               icon={<CheckCircleOutlined />}
-              loading={publish.isPending}
+              loading={isPublishingThisShowtime}
               onClick={() =>
                 Modal.confirm({
                   title: "Lên lịch suất chiếu này?",
