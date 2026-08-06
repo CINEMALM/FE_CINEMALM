@@ -141,6 +141,30 @@ const AdminCounterBooking = () => {
         })),
     [watchedProductItems],
   );
+  const priceByProductVariant = useMemo(
+    () =>
+      Object.fromEntries(
+        (productsQuery.data || []).flatMap((product) =>
+          product.variants.map((variant) => [
+            String(variant.id),
+            Number(variant.price || 0),
+          ]),
+        ),
+      ),
+    [productsQuery.data],
+  );
+  const localProductAmount = useMemo(
+    () =>
+      selectedProductItems.reduce(
+        (total, item) =>
+          total +
+          Number(priceByProductVariant[String(item.product_variant_id)] || 0) *
+            Number(item.quantity || 0),
+        0,
+      ),
+    [priceByProductVariant, selectedProductItems],
+  );
+  const localSubtotalAmount = totalPrice + localProductAmount;
   const promotionPreview = useQuery({
     queryKey: [
       "ADMIN_COUNTER_PROMOTION_PREVIEW",
@@ -159,7 +183,8 @@ const AdminCounterBooking = () => {
     enabled: Boolean(selectedShowtimeId && selectedSeatIds.length),
     retry: false,
   });
-  const payableAmount = promotionPreview.data?.total_amount ?? totalPrice;
+  const payableAmount =
+    promotionPreview.data?.total_amount ?? localSubtotalAmount;
   const issuedAt = createdTicket?.paidAt || createdTicket?.createdAt;
   const ticketQrValue =
     createdTicket?.qrCode || createdTicket?.ticketCode || "";
@@ -565,6 +590,25 @@ const AdminCounterBooking = () => {
                     {selectedSeats.map((seat) => seat.label).join(", ") || "-"}
                   </Descriptions.Item>
                   <Descriptions.Item label="Tổng tiền">
+                    <div className="mb-1 text-xs text-gray-400">
+                      Tiền vé:{" "}
+                      {formatCurrency(
+                        promotionPreview.data?.seat_amount ?? totalPrice,
+                      )}
+                    </div>
+                    <div className="mb-1 text-xs text-gray-400">
+                      Bắp nước / Combo:{" "}
+                      {formatCurrency(
+                        promotionPreview.data?.product_amount ??
+                          localProductAmount,
+                      )}
+                    </div>
+                    {promotionPreview.data?.discount_amount ? (
+                      <div className="mb-1 text-xs text-green-400">
+                        Giảm giá: -
+                        {formatCurrency(promotionPreview.data.discount_amount)}
+                      </div>
+                    ) : null}
                     <b>{formatCurrency(payableAmount)}</b>
                   </Descriptions.Item>
                   <Descriptions.Item label="Khách đưa">

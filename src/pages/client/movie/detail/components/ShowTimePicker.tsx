@@ -37,7 +37,7 @@ const showtimeButtonClass = (isSelected: boolean, isDisabled = false) =>
 const bookingClosedLabels: Record<IBookingClosedReason, string> = {
   NOT_SCHEDULED: "Chưa mở",
   BOOKING_CUTOFF_REACHED: "Đóng bán",
-  STARTED: "Đã chiếu",
+  STARTED: "Đã bắt đầu",
   ENDED: "Kết thúc",
   SOLD_OUT: "Hết ghế",
   CANCELLED: "Đã hủy",

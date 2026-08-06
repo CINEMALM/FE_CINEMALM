@@ -107,7 +107,13 @@ const AdminShowtimes = () => {
 
   const showtimes = useQuery({
     queryKey: ["ADMIN", "SHOWTIMES", page],
-    queryFn: () => adminService.showtimes({ page, per_page: 10 }),
+    queryFn: () =>
+      adminService.showtimes({
+        page,
+        per_page: 10,
+        sort: "created_at",
+        order: "desc",
+      }),
   });
   const movies = useQuery({
     queryKey: ["ADMIN", "SHOWTIME_FORM_MOVIES"],
@@ -132,6 +138,7 @@ const AdminShowtimes = () => {
       setOpen(false);
       setEditing(null);
       setServerError(null);
+      setPage(1);
       form.resetFields();
       await queryClient.invalidateQueries({
         queryKey: ["ADMIN", "SHOWTIMES"],
@@ -300,6 +307,9 @@ const AdminShowtimes = () => {
   };
 
   const renderActions = (record: IShowtime) => {
+    const isPublishingThisShowtime =
+      publish.isPending && publish.variables?._id === record._id;
+
     if (record.status === "draft") {
       return (
         <Space size="small">
@@ -309,7 +319,7 @@ const AdminShowtimes = () => {
           <Tooltip title="Công khai suất chiếu cho khách đặt vé">
             <Button
               icon={<CheckCircleOutlined />}
-              loading={publish.isPending}
+              loading={isPublishingThisShowtime}
               onClick={() =>
                 Modal.confirm({
                   title: "Lên lịch suất chiếu này?",
@@ -502,7 +512,7 @@ const AdminShowtimes = () => {
               rules={[{ required: true, message: "Vui lòng chọn phim." }]}
             >
               <Select
-                disabled={Boolean(editing)}
+                disabled={Boolean(editing && !canEditCore(editing))}
                 showSearch
                 loading={movies.isLoading}
                 optionFilterProp="label"
@@ -521,7 +531,7 @@ const AdminShowtimes = () => {
               rules={[{ required: true, message: "Vui lòng chọn phòng." }]}
             >
               <Select
-                disabled={Boolean(editing)}
+                disabled={Boolean(editing && !canEditCore(editing))}
                 showSearch
                 loading={rooms.isLoading}
                 optionFilterProp="label"
@@ -542,7 +552,7 @@ const AdminShowtimes = () => {
               ]}
             >
               <Select
-                disabled={Boolean(editing)}
+                disabled={Boolean(editing && !canEditCore(editing))}
                 options={validProjectionFormatOptions}
                 placeholder="Chọn định dạng"
               />
@@ -565,7 +575,7 @@ const AdminShowtimes = () => {
               showTime={{ format: "HH:mm", minuteStep: 5 }}
               format="DD/MM/YYYY HH:mm"
               className="w-full"
-              disabled={Boolean(editing) || undefined}
+              disabled={Boolean(editing && !canEditCore(editing)) || undefined}
               disabledDate={(date) => date.endOf("day").isBefore(dayjs())}
               placeholder="Chọn ngày và giờ chiếu"
             />

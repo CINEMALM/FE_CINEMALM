@@ -4,7 +4,7 @@ import {
   MenuOutlined,
   SearchOutlined,
 } from "@ant-design/icons";
-import { Input, Modal } from "antd";
+import { Input } from "antd";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { useLogoutMutation } from "../../hooks/useAuth";
@@ -286,27 +286,71 @@ const Header = () => {
         </div>
       )}
 
-      <Modal
-        title="Tìm kiếm phim"
-        open={searchOpen}
-        footer={null}
-        width={560}
-        onCancel={() => setSearchOpen(false)}
-        afterOpenChange={(visible) => {
-          if (!visible) setSearchKeyword("");
-        }}
-      >
-        <Input.Search
-          autoFocus
-          allowClear
-          size="large"
-          value={searchKeyword}
-          placeholder="Nhập tên phim hoặc đạo diễn..."
-          enterButton="Tìm kiếm"
-          onChange={(event) => setSearchKeyword(event.target.value)}
-          onSearch={submitSearch}
-        />
-      </Modal>
+      {searchOpen && (
+        <div
+          className="fixed inset-0 z-[10000] bg-black/75 px-4 py-24 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Tìm kiếm phim"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setSearchOpen(false);
+              setSearchKeyword("");
+            }
+          }}
+        >
+          <div className="mx-auto max-w-2xl overflow-hidden border border-white/10 bg-[#111]/95 shadow-2xl shadow-black/60">
+            <div className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-5 sm:px-7">
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-[0.24em] text-[#DC0000]">
+                  Search movies
+                </p>
+                <h2 className="mt-1 font-display text-2xl font-bold text-[#F2F2F2]">
+                  Tìm kiếm phim
+                </h2>
+                <p className="mt-1 text-sm text-[#9A9A9A]">
+                  Hệ thống hiện tìm theo tên phim, đạo diễn và nội dung phim.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="grid h-10 w-10 shrink-0 place-items-center border border-white/10 text-[#9A9A9A] transition hover:border-[#DC0000] hover:text-[#F2F2F2]"
+                aria-label="Đóng tìm kiếm"
+                onClick={() => {
+                  setSearchOpen(false);
+                  setSearchKeyword("");
+                }}
+              >
+                <CloseOutlined />
+              </button>
+            </div>
+
+            <div className="p-5 sm:p-7">
+              <div className="flex flex-col gap-3 border border-white/10 bg-[#0A0A0A] p-2 sm:flex-row">
+                <Input
+                  autoFocus
+                  allowClear
+                  size="large"
+                  variant="borderless"
+                  prefix={<SearchOutlined className="text-[#DC0000]" />}
+                  value={searchKeyword}
+                  placeholder="Ví dụ: Bão Đêm Sài Gòn, Nguyễn An..."
+                  className="h-12 flex-1 bg-transparent text-[#F2F2F2] placeholder:text-[#666]"
+                  onChange={(event) => setSearchKeyword(event.target.value)}
+                  onPressEnter={() => submitSearch()}
+                />
+                <button
+                  type="button"
+                  className="h-12 bg-[#DC0000] px-6 text-sm font-black uppercase tracking-[0.14em] text-[#0A0A0A] transition hover:bg-[#F2F2F2]"
+                  onClick={() => submitSearch()}
+                >
+                  Tìm kiếm
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 };

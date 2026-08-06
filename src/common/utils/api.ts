@@ -21,7 +21,6 @@ type QueueItem = {
 const unsafeMethods = ["post", "put", "patch", "delete"];
 const authNoRefreshPaths = [
   "/auth/login",
-  "/auth/me",
   "/auth/register",
   "/auth/verify-email",
   "/auth/refresh",
@@ -115,7 +114,11 @@ api.interceptors.request.use(
   async (config) => {
     const accessToken = getAccessToken();
 
-    if (accessToken && !config.headers.has("Authorization")) {
+    if (
+      accessToken &&
+      !config.headers.has("Authorization") &&
+      !config.url?.includes("/auth/refresh")
+    ) {
       config.headers.set("Authorization", `Bearer ${accessToken}`);
     }
 

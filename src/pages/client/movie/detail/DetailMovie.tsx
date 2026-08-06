@@ -63,6 +63,12 @@ const DetailMovie = () => {
   }
 
   const ageBadge = getAgeBadge(movie.ageRequire);
+  const movieStatusLabel =
+    movie.statusRelease === "nowShowing"
+      ? "Đang chiếu"
+      : movie.statusRelease === "upcoming"
+        ? "Sắp chiếu"
+        : "Ngừng chiếu";
   const categories = (movie.category as ICategory[])
     ?.map((item) => item.name)
     .join(", ");
@@ -107,9 +113,7 @@ const DetailMovie = () => {
                 {ageBadge.label}
               </span>
               <span className="border border-white/15 bg-[#141414]/90 px-2.5 py-1 text-xs font-bold text-[#9A9A9A]">
-                {movie.statusRelease === "nowShowing"
-                  ? "Đang chiếu"
-                  : "Sắp chiếu"}
+                {movieStatusLabel}
               </span>
             </div>
 
