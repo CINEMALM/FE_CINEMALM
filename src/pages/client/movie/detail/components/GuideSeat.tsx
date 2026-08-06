@@ -360,7 +360,11 @@ const GuideSeat = () => {
   }, [holdDeadline, selectedSeatIds.length]);
 
   useEffect(() => {
-    if (!holdDeadline || !selectedSeatIds.length || holdRemainingSeconds > 0) {
+    if (!holdDeadline || !selectedSeatIds.length) {
+      return;
+    }
+
+    if (Date.now() < holdDeadline) {
       return;
     }
 
