@@ -45,12 +45,20 @@ const RegisterModal = ({
     };
 
     try {
-      await registerMutation.mutateAsync(payload);
-      antdMessage.success(
-        "Đăng ký thành công. Vui lòng kiểm tra email để lấy mã xác thực.",
-      );
+      const response = await registerMutation.mutateAsync(payload);
+      const requiresEmailVerification =
+        response.data?.requires_email_verification !== false;
+      if (!requiresEmailVerification) {
+        antdMessage.success("Đăng ký thành công. Bạn có thể đăng nhập ngay.");
+      } else {
+        antdMessage.success(
+          "Đăng ký thành công. Vui lòng kiểm tra email để lấy mã xác thực.",
+        );
+      }
       setOpen(false);
-      navigate(`/verify-email?email=${encodeURIComponent(values.email)}`);
+      if (requiresEmailVerification) {
+        navigate(`/verify-email?email=${encodeURIComponent(values.email)}`);
+      }
     } catch (error) {
       if (axios.isAxiosError(error)) {
         const errors = error.response?.data?.errors as
