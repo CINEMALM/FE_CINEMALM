@@ -21,6 +21,41 @@ import { formatCurrency } from "../../../../../common/utils";
 const MAX_SELECTED_SEATS = 8;
 const AVAILABLE_SEAT_COLOR = "#70737C";
 
+const formatCountdown = (seconds: number) => {
+  const safeSeconds = Math.max(0, seconds);
+  const minutes = Math.floor(safeSeconds / 60);
+  const remainSeconds = safeSeconds % 60;
+
+  return `${String(minutes).padStart(2, "0")}:${String(remainSeconds).padStart(
+    2,
+    "0",
+  )}`;
+};
+
+const resolveHoldDeadline = (payload?: {
+  held_until?: string | null;
+  hold_expires_in?: number;
+  server_time?: string;
+}) => {
+  if (!payload) return null;
+
+  const heldUntil = payload.held_until ? Date.parse(payload.held_until) : NaN;
+  if (Number.isFinite(heldUntil)) return heldUntil;
+
+  const serverTime = payload.server_time
+    ? Date.parse(payload.server_time)
+    : NaN;
+  const expiresIn = Number(payload.hold_expires_in || 0);
+
+  if (Number.isFinite(serverTime) && expiresIn > 0) {
+    return serverTime + expiresIn * 1000;
+  }
+
+  if (expiresIn > 0) return Date.now() + expiresIn * 1000;
+
+  return null;
+};
+
 const seatShapeClass = (type: ISeatStatus["type"], compact = false) => {
   if (type === "NORMAL") {
     return compact
@@ -147,6 +182,8 @@ const GuideSeat = () => {
   >({});
   const [voucherCode, setVoucherCode] = useState("");
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [holdDeadline, setHoldDeadline] = useState<number | null>(null);
+  const [holdRemainingSeconds, setHoldRemainingSeconds] = useState(0);
 
   const seatsQuery = useQuery({
     queryKey: ["SHOWTIME_SEATS", showtimeId],
@@ -217,6 +254,8 @@ const GuideSeat = () => {
     setProductQuantities({});
     setVoucherCode("");
     setIsCheckoutOpen(false);
+    setHoldDeadline(null);
+    setHoldRemainingSeconds(0);
     setInformation({ seat: [], totalPrice: 0 });
   }, [setInformation, showtimeId]);
 
@@ -301,6 +340,52 @@ const GuideSeat = () => {
   const finalTotal =
     promotionPreview.data?.total_amount ?? totalPrice + localProductAmount;
   const selectedShowtimePrices = showtime?.price || [];
+
+  useEffect(() => {
+    if (!holdDeadline || !selectedSeatIds.length) {
+      setHoldRemainingSeconds(0);
+      return;
+    }
+
+    const updateRemaining = () => {
+      setHoldRemainingSeconds(
+        Math.max(0, Math.ceil((holdDeadline - Date.now()) / 1000)),
+      );
+    };
+
+    updateRemaining();
+    const timer = window.setInterval(updateRemaining, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [holdDeadline, selectedSeatIds.length]);
+
+  useEffect(() => {
+    if (!holdDeadline || !selectedSeatIds.length || holdRemainingSeconds > 0) {
+      return;
+    }
+
+    const expiredSeatIds = [...selectedSeatIds];
+    setSelectedSeatIds([]);
+    setHoldDeadline(null);
+    setHoldRemainingSeconds(0);
+    setIsCheckoutOpen(false);
+    setNotice("Thời gian giữ ghế đã hết. Vui lòng chọn lại ghế.");
+
+    void releaseSeats(showtimeId as string, expiredSeatIds).catch(() => {
+      // Backend/job may have already released these seats. The invalidate below
+      // keeps the UI in sync either way.
+    });
+
+    void queryClient.invalidateQueries({
+      queryKey: ["SHOWTIME_SEATS", showtimeId],
+    });
+  }, [
+    holdDeadline,
+    holdRemainingSeconds,
+    queryClient,
+    selectedSeatIds,
+    showtimeId,
+  ]);
 
   const checkout = useMutation({
     mutationFn: async () => {
@@ -412,6 +497,11 @@ const GuideSeat = () => {
       releaseSelection.mutate([seat._id], {
         onSuccess: () => {
           setSelectedSeatIds(nextSeatIds);
+          if (!nextSeatIds.length) {
+            setHoldDeadline(null);
+            setHoldRemainingSeconds(0);
+            setIsCheckoutOpen(false);
+          }
         },
       });
       return;
@@ -431,7 +521,8 @@ const GuideSeat = () => {
     }
 
     holdSelection.mutate(nextSeatIds, {
-      onSuccess: () => {
+      onSuccess: (payload) => {
+        setHoldDeadline(resolveHoldDeadline(payload));
         setSelectedSeatIds(nextSeatIds);
       },
     });
@@ -716,6 +807,22 @@ const GuideSeat = () => {
                   {formatCurrency(totalPrice)}
                 </span>
               </p>
+              {selectedSeatIds.length > 0 && holdDeadline && (
+                <div
+                  className={`mt-3 inline-flex items-center gap-2 border px-3 py-2 text-xs font-black uppercase tracking-[0.12em] ${
+                    holdRemainingSeconds <= 60
+                      ? "border-[#DC0000]/60 bg-[#DC0000]/10 text-[#DC0000]"
+                      : "border-white/10 bg-[#0A0A0A] text-[#F2F2F2]"
+                  }`}
+                  role="timer"
+                  aria-live="polite"
+                >
+                  <span>Thời gian giữ ghế</span>
+                  <span className="font-mono text-sm">
+                    {formatCountdown(holdRemainingSeconds)}
+                  </span>
+                </div>
+              )}
               {notice && (
                 <p className="mt-2 text-xs text-[#DC0000]" role="status">
                   {notice}
