@@ -17,6 +17,16 @@ export interface ITicketItem {
   type: string;
 }
 
+export interface ITicketAdmission {
+  _id: string;
+  ticketItemId: string;
+  admissionCode: string;
+  qrToken: string;
+  status: "valid" | "used" | "void";
+  usedAt?: string | null;
+  seatLabel?: string;
+}
+
 export interface ITicketProductItem {
   _id: string;
   productVariantId: string | null;
@@ -46,6 +56,7 @@ export interface ITicket {
   projectionFormat: IShowtimeFormat;
   items: ITicketItem[];
   productItems?: ITicketProductItem[];
+  admissions?: ITicketAdmission[];
   startTime: string;
   totalPrice: number;
   seatAmount?: number;
@@ -57,6 +68,10 @@ export interface ITicket {
   paidAt?: string | null;
   usedAt?: string | null;
   expiresAt?: string | null;
+  paymentDueAt?: string | null;
+  paymentMethod?: "VNPAY" | "CASH" | "BANK_TRANSFER" | string | null;
+  vnpayOrderCode?: string | null;
+  channel?: "online" | "counter" | string | null;
   checkInOpenAt?: string | null;
   checkInCloseAt?: string | null;
   qrCode?: string | null;

@@ -193,7 +193,6 @@ api.interceptors.response.use(
       clearCsrfToken();
       setAccessToken(null);
       useAuthStore.getState().clearAuth();
-      useAuthStore.getState().setOpenModal(true);
       return Promise.reject(refreshError);
     } finally {
       isRefreshing = false;

@@ -103,6 +103,7 @@ export interface IAdminDashboardOverview {
     product_revenue_selected_range: number;
     discount_selected_range: number;
     gross_revenue_selected_range: number;
+    concession_order_revenue_selected_range?: number;
     refund_selected_range?: number;
     tickets_today: number;
     paid_orders_today?: number;
@@ -126,6 +127,7 @@ export interface IAdminDashboardOverview {
     discount_amount: number;
     refund_amount?: number;
     gross_revenue: number;
+    concession_order_revenue?: number;
     average_order_value: number;
     average_ticket_value?: number;
   };
@@ -138,6 +140,7 @@ export interface IAdminDashboardOverview {
     discount_amount: number;
     refund_amount?: number;
     gross_revenue: number;
+    concession_order_revenue?: number;
     tickets: number;
     paid_orders?: number;
     sold_seats?: number;
@@ -176,6 +179,7 @@ export interface IAdminDashboardOverview {
     discount_amount: number;
     refund_amount?: number;
     gross_revenue: number;
+    concession_order_revenue?: number;
     tickets: number;
     paid_orders?: number;
     sold_seats?: number;

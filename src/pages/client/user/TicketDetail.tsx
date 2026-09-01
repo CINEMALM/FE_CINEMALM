@@ -59,11 +59,16 @@ const TicketDetail = () => {
   });
 
   const item = ticket.data;
-  const expiresAt = useMemo(
-    () => (item?.expiresAt ? dayjs(item.expiresAt) : null),
-    [item?.expiresAt],
+  const paymentDueAt = useMemo(
+    () =>
+      item?.paymentDueAt || item?.expiresAt
+        ? dayjs(item.paymentDueAt || item.expiresAt)
+        : null,
+    [item?.expiresAt, item?.paymentDueAt],
   );
-  const secondsToExpire = expiresAt ? expiresAt.diff(now, "second") : null;
+  const secondsToExpire = paymentDueAt
+    ? paymentDueAt.diff(now, "second")
+    : null;
   const isPaymentExpired =
     item?.status === "pending" &&
     item.paymentStatus === "pending" &&
@@ -211,7 +216,12 @@ const TicketDetail = () => {
                 {paymentMeta?.label || item.paymentStatus}
               </Tag>
             </Descriptions.Item>
-            {item.status === "pending" && item.expiresAt && (
+            {item.vnpayOrderCode && (
+              <Descriptions.Item label="Mã đơn hàng">
+                <span className="font-mono">{item.vnpayOrderCode}</span>
+              </Descriptions.Item>
+            )}
+            {item.status === "pending" && paymentDueAt && (
               <Descriptions.Item label="Hạn thanh toán">
                 <span
                   className={
@@ -219,7 +229,7 @@ const TicketDetail = () => {
                   }
                 >
                   {canPay
-                    ? `${formatCountdown(secondsToExpire || 0)} · ${dayjs(item.expiresAt).format("HH:mm DD/MM/YYYY")}`
+                    ? `${formatCountdown(secondsToExpire || 0)} · ${paymentDueAt.format("HH:mm DD/MM/YYYY")}`
                     : "Đã hết hạn"}
                 </span>
               </Descriptions.Item>
@@ -266,12 +276,36 @@ const TicketDetail = () => {
             </div>
           )}
 
-          {item.status === "confirmed" && (
-            <div className="mt-6 inline-flex flex-col items-center border border-white/10 bg-white p-4 text-[#0A0A0A]">
-              <QRCodeCanvas value={item.qrCode || item.ticketCode} size={164} />
-              <p className="mt-3 text-xs font-black uppercase tracking-[0.14em]">
-                {item.ticketCode}
+          {(item.status === "confirmed" || item.status === "used") && (
+            <div className="mt-6">
+              <h2 className="text-sm font-black uppercase tracking-[0.14em]">
+                Mã vào rạp theo từng ghế
+              </h2>
+              <p className="mt-2 text-sm text-[#9A9A9A]">
+                Mỗi khách dùng đúng QR của ghế mình và có thể check-in vào những
+                thời điểm khác nhau.
               </p>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {(item.admissions || []).map((admission) => (
+                  <div
+                    key={admission._id}
+                    className="flex flex-col items-center border border-white/10 bg-white p-4 text-[#0A0A0A]"
+                  >
+                    <QRCodeCanvas value={admission.qrToken} size={150} />
+                    <p className="mt-3 text-lg font-black">
+                      Ghế {admission.seatLabel || "-"}
+                    </p>
+                    <Tag color={admission.status === "used" ? "blue" : "green"}>
+                      {admission.status === "used"
+                        ? "Đã vào rạp"
+                        : "Chưa sử dụng"}
+                    </Tag>
+                    <p className="mt-2 break-all text-center text-[10px] font-bold">
+                      {admission.admissionCode}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>

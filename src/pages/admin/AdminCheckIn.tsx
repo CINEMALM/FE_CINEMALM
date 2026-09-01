@@ -20,6 +20,12 @@ import type { ITicket } from "../../common/types/ticket";
 const AdminCheckIn = () => {
   const [form] = Form.useForm<{ ticketCode: string }>();
   const [lastTicket, setLastTicket] = useState<ITicket | null>(null);
+  const [lastProgress, setLastProgress] = useState<{
+    checked_in_count: number;
+    total_admissions: number;
+    remaining_count: number;
+  } | null>(null);
+  const [lastSeatLabel, setLastSeatLabel] = useState<string>();
   const [scannerEnabled, setScannerEnabled] = useState(true);
   const [scannerError, setScannerError] = useState<string | null>(null);
 
@@ -30,10 +36,14 @@ const AdminCheckIn = () => {
 
   const checkIn = useMutation({
     mutationFn: (ticketCode: string) => adminService.checkInTicket(ticketCode),
-    onSuccess: (ticket) => {
-      setLastTicket(ticket);
+    onSuccess: (result) => {
+      setLastTicket(result.ticket);
+      setLastProgress(result.progress);
+      setLastSeatLabel(result.admission?.seatLabel);
       form.setFieldsValue({ ticketCode: "" });
-      message.success(`Check-in thành công vé ${ticket.ticketCode}`);
+      message.success(
+        `Check-in thành công${result.admission?.seatLabel ? ` ghế ${result.admission.seatLabel}` : ""}`,
+      );
     },
     onError: (error: unknown) => {
       const err = error as {
@@ -64,8 +74,9 @@ const AdminCheckIn = () => {
         </p>
         <h1 className="mt-2 font-display text-3xl font-bold">Check-in QR</h1>
         <p className="mt-2 text-sm text-[#9A9A9A]">
-          Quét QR trên vé hoặc nhập mã vé thủ công. Vé chỉ hợp lệ khi đã thanh
-          toán, chưa dùng và nằm trong khung giờ check-in.
+          Mỗi ghế có một QR riêng để khách trong cùng nhóm có thể vào độc lập.
+          Vé được check-in sớm theo cấu hình và vẫn hợp lệ cho tới khi phim kết
+          thúc.
         </p>
       </div>
 
@@ -156,6 +167,18 @@ const AdminCheckIn = () => {
 
           {lastTicket && (
             <div className="mt-6 border-t border-white/10 pt-5">
+              {lastProgress && (
+                <Alert
+                  className="mb-4"
+                  type={lastProgress.remaining_count ? "info" : "success"}
+                  showIcon
+                  message={
+                    lastProgress.remaining_count
+                      ? `Đã vào ${lastProgress.checked_in_count}/${lastProgress.total_admissions} ghế · còn ${lastProgress.remaining_count} khách`
+                      : `Đã check-in đủ ${lastProgress.total_admissions} ghế trong đơn`
+                  }
+                />
+              )}
               <Space align="center" className="mb-4">
                 <Tag color="green">Đã check-in</Tag>
                 <span className="font-bold">{lastTicket.ticketCode}</span>
@@ -173,6 +196,11 @@ const AdminCheckIn = () => {
                 <Descriptions.Item label="Ghế">
                   {lastTicket.items.map((seat) => seat.seatLabel).join(", ")}
                 </Descriptions.Item>
+                {lastSeatLabel && (
+                  <Descriptions.Item label="Ghế vừa check-in">
+                    <Tag color="green">{lastSeatLabel}</Tag>
+                  </Descriptions.Item>
+                )}
                 <Descriptions.Item label="Khách hàng">
                   {lastTicket.customerName}
                 </Descriptions.Item>

@@ -22,7 +22,7 @@ import {
 import axios from "axios";
 import dayjs from "dayjs";
 import { QRCodeCanvas } from "qrcode.react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { SEAT_STATUS_COLOR } from "../../common/constants/seat";
 import { adminService } from "../../common/services/admin.service";
 import {
@@ -37,6 +37,18 @@ import { formatCurrency } from "../../common/utils";
 
 const MAX_COUNTER_SEATS = 8;
 
+const formatSeatCountdown = (
+  heldUntil: string | null | undefined,
+  now: number,
+) => {
+  if (!heldUntil) return null;
+  const deadline = Date.parse(heldUntil);
+  if (!Number.isFinite(deadline)) return null;
+  const seconds = Math.max(0, Math.ceil((deadline - now) / 1000));
+  const minutes = Math.floor(seconds / 60);
+  return `${String(minutes).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+};
+
 const AdminCounterBooking = () => {
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
@@ -48,7 +60,15 @@ const AdminCounterBooking = () => {
     changeAmount: number;
   } | null>(null);
   const [showtimeDate, setShowtimeDate] = useState(dayjs());
+  const [seatClockNow, setSeatClockNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setSeatClockNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
   const amountReceived = Number(Form.useWatch("amount_received", form) || 0);
+  const paymentMethod =
+    (Form.useWatch("payment_method", form) as "CASH") || "CASH";
   const voucherCode = String(Form.useWatch("voucher_code", form) || "");
   const watchedProductItems = Form.useWatch("product_items", form) || [];
 
@@ -186,8 +206,6 @@ const AdminCounterBooking = () => {
   const payableAmount =
     promotionPreview.data?.total_amount ?? localSubtotalAmount;
   const issuedAt = createdTicket?.paidAt || createdTicket?.createdAt;
-  const ticketQrValue =
-    createdTicket?.qrCode || createdTicket?.ticketCode || "";
 
   const sellTicket = useMutation({
     mutationFn: async () => {
@@ -205,7 +223,7 @@ const AdminCounterBooking = () => {
         customer_phone: values.customer_phone || undefined,
         product_items: selectedProductItems,
         voucher_code: values.voucher_code || undefined,
-        payment_method: "CASH",
+        payment_method: values.payment_method || "CASH",
         amount_received: Number(values.amount_received || 0),
       });
     },
@@ -217,7 +235,7 @@ const AdminCounterBooking = () => {
         changeAmount: Math.max(0, received - ticket.totalPrice),
       });
       setSelectedSeatIds([]);
-      form.resetFields(["amount_received"]);
+      form.resetFields(["amount_received", "transfer_reference", "bank_code"]);
       message.success("Bán vé tại quầy thành công.");
       await queryClient.invalidateQueries({
         queryKey: ["ADMIN_COUNTER_SEATS", selectedShowtimeId],
@@ -235,6 +253,7 @@ const AdminCounterBooking = () => {
   });
 
   const holdSeats = useMutation({
+    scope: { id: "admin-counter-seat-selection" },
     mutationFn: (seatIds: string[]) => {
       if (!selectedShowtimeId) throw new Error("Missing showtime");
       return adminService.holdCounterSeats({
@@ -258,6 +277,7 @@ const AdminCounterBooking = () => {
   });
 
   const releaseSeats = useMutation({
+    scope: { id: "admin-counter-seat-selection" },
     mutationFn: (seatIds: string[]) => {
       if (!selectedShowtimeId) throw new Error("Missing showtime");
       return adminService.releaseCounterSeats({
@@ -273,7 +293,6 @@ const AdminCounterBooking = () => {
   });
 
   const toggleSeat = (seat: ISeatStatus) => {
-    if (holdSeats.isPending || releaseSeats.isPending) return;
     if (
       !seat.status ||
       (seat.bookingStatus !== "AVAILABLE" &&
@@ -283,13 +302,10 @@ const AdminCounterBooking = () => {
     }
 
     if (selectedSeatIds.includes(seat._id)) {
-      releaseSeats.mutate([seat._id], {
-        onSuccess: () => {
-          setSelectedSeatIds((current) =>
-            current.filter((seatId) => seatId !== seat._id),
-          );
-        },
-      });
+      setSelectedSeatIds((current) =>
+        current.filter((seatId) => seatId !== seat._id),
+      );
+      releaseSeats.mutate([seat._id]);
       return;
     }
 
@@ -299,9 +315,8 @@ const AdminCounterBooking = () => {
     }
 
     const nextSeatIds = [...selectedSeatIds, seat._id];
-    holdSeats.mutate(nextSeatIds, {
-      onSuccess: () => setSelectedSeatIds(nextSeatIds),
-    });
+    setSelectedSeatIds(nextSeatIds);
+    holdSeats.mutate(nextSeatIds);
   };
 
   const seatColor = (seat: ISeatStatus) => {
@@ -398,9 +413,16 @@ const AdminCounterBooking = () => {
             VE XEM PHIM TAI QUAY
           </div>
 
-          <div className="counter-print-ticket__qr">
-            <QRCodeCanvas value={ticketQrValue} size={150} />
-          </div>
+          {(createdTicket.admissions || []).map((admission) => (
+            <div key={admission._id}>
+              <div className="counter-print-ticket__qr">
+                <QRCodeCanvas value={admission.qrToken} size={130} />
+              </div>
+              <div className="counter-print-ticket__subtitle">
+                GHE {admission.seatLabel || "-"} · {admission.admissionCode}
+              </div>
+            </div>
+          ))}
 
           <div className="counter-print-ticket__row">
             <span>Ma ve</span>
@@ -546,25 +568,39 @@ const AdminCounterBooking = () => {
                         <span className="text-center text-xs text-gray-400">
                           {row[0]?.label.charAt(0)}
                         </span>
-                        {row.map((seat) => (
-                          <button
-                            key={seat._id}
-                            type="button"
-                            disabled={
-                              !seat.status ||
-                              (seat.bookingStatus !== "AVAILABLE" &&
-                                !selectedSeatIds.includes(seat._id))
-                            }
-                            onClick={() => toggleSeat(seat)}
-                            className="h-8 rounded border border-white/10 text-[10px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
-                            style={{
-                              gridColumn: `${seat.col + 1} / span ${seat.span || 1}`,
-                              backgroundColor: seatColor(seat),
-                            }}
-                          >
-                            {seat.label}
-                          </button>
-                        ))}
+                        {row.map((seat) => {
+                          const holdCountdown =
+                            seat.bookingStatus === "HOLD"
+                              ? formatSeatCountdown(
+                                  seat.heldUntil,
+                                  seatClockNow,
+                                )
+                              : null;
+                          return (
+                            <button
+                              key={seat._id}
+                              type="button"
+                              disabled={
+                                !seat.status ||
+                                (seat.bookingStatus !== "AVAILABLE" &&
+                                  !selectedSeatIds.includes(seat._id))
+                              }
+                              onClick={() => toggleSeat(seat)}
+                              className="flex h-9 flex-col items-center justify-center rounded border border-white/10 text-[10px] font-bold leading-tight text-white disabled:cursor-not-allowed disabled:opacity-60"
+                              style={{
+                                gridColumn: `${seat.col + 1} / span ${seat.span || 1}`,
+                                backgroundColor: seatColor(seat),
+                              }}
+                            >
+                              <span>{seat.label}</span>
+                              {holdCountdown && (
+                                <span className="font-mono text-[7px] text-white/90">
+                                  {holdCountdown}
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
                       </div>
                     ))}
                   </div>
@@ -574,8 +610,12 @@ const AdminCounterBooking = () => {
           </Col>
 
           <Col xs={24} xl={8}>
-            <Card title="2. Thanh toán tiền mặt">
-              <Form form={form} layout="vertical">
+            <Card title="2. Thanh toán tại quầy">
+              <Form
+                form={form}
+                layout="vertical"
+                initialValues={{ payment_method: "CASH" }}
+              >
                 <Form.Item label="Tên khách" name="customer_name">
                   <Input placeholder="Khách vãng lai" />
                 </Form.Item>
@@ -611,22 +651,29 @@ const AdminCounterBooking = () => {
                     ) : null}
                     <b>{formatCurrency(payableAmount)}</b>
                   </Descriptions.Item>
-                  <Descriptions.Item label="Khách đưa">
-                    {formatCurrency(amountReceived)}
+                  <Descriptions.Item label="Phương thức">
+                    Tiền mặt
                   </Descriptions.Item>
-                  <Descriptions.Item label="Tiền thối">
-                    <b
-                      className={
-                        amountReceived >= payableAmount
-                          ? "text-green-400"
-                          : "text-red-400"
-                      }
-                    >
-                      {formatCurrency(
-                        Math.max(0, amountReceived - payableAmount),
-                      )}
-                    </b>
-                  </Descriptions.Item>
+                  {paymentMethod === "CASH" && (
+                    <>
+                      <Descriptions.Item label="Khách đưa">
+                        {formatCurrency(amountReceived)}
+                      </Descriptions.Item>
+                      <Descriptions.Item label="Tiền thối">
+                        <b
+                          className={
+                            amountReceived >= payableAmount
+                              ? "text-green-400"
+                              : "text-red-400"
+                          }
+                        >
+                          {formatCurrency(
+                            Math.max(0, amountReceived - payableAmount),
+                          )}
+                        </b>
+                      </Descriptions.Item>
+                    </>
+                  )}
                 </Descriptions>
                 <Form.List name="product_items">
                   {(fields, { add, remove }) => (
@@ -688,6 +735,9 @@ const AdminCounterBooking = () => {
                     message={`Đã giảm ${formatCurrency(promotionPreview.data.discount_amount)}`}
                   />
                 ) : null}
+                <Form.Item label="Phương thức thanh toán" name="payment_method">
+                  <Select options={[{ value: "CASH", label: "Tiền mặt" }]} />
+                </Form.Item>
                 <Form.Item
                   label="Tiền khách đưa"
                   name="amount_received"
@@ -724,11 +774,16 @@ const AdminCounterBooking = () => {
                   message={`Mã vé: ${createdTicket.ticketCode}`}
                   className="mb-4"
                 />
-                <div className="flex justify-center rounded bg-white p-4">
-                  <QRCodeCanvas
-                    value={createdTicket.qrCode || createdTicket.ticketCode}
-                    size={180}
-                  />
+                <div className="grid gap-3 rounded bg-white p-4 sm:grid-cols-2">
+                  {(createdTicket.admissions || []).map((admission) => (
+                    <div
+                      key={admission._id}
+                      className="flex flex-col items-center text-black"
+                    >
+                      <QRCodeCanvas value={admission.qrToken} size={140} />
+                      <b className="mt-2">Ghế {admission.seatLabel || "-"}</b>
+                    </div>
+                  ))}
                 </div>
                 <Descriptions column={1} size="small" className="mt-4">
                   <Descriptions.Item label="Phim">

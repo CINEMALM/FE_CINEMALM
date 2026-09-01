@@ -11,6 +11,8 @@ type SeatRealtimePayload = {
     status: string;
     user_id: number | string | null;
     held_until?: string | null;
+    hold_context?: "SELECTION" | "PAYMENT";
+    countdown_until?: string | null;
   }[];
 };
 

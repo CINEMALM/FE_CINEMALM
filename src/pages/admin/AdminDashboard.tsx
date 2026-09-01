@@ -212,6 +212,16 @@ const AdminDashboard = () => {
       to: "/admin/concession",
     },
     {
+      label: "Bắp nước bán lẻ",
+      value: formatCurrency(
+        range?.concession_order_revenue ??
+          summary?.concession_order_revenue_selected_range,
+      ),
+      hint: "Doanh thu đơn bắp nước bán độc lập tại quầy.",
+      icon: ShoppingOutlined,
+      to: "/admin/concession-sales",
+    },
+    {
       label: "Giảm giá",
       value: formatCurrency(
         range?.discount_amount ?? summary?.discount_selected_range,
@@ -340,7 +350,7 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
           <Metric
             label="Doanh thu gộp"
             value={formatCurrency(range?.gross_revenue)}
@@ -352,6 +362,10 @@ const AdminDashboard = () => {
           <Metric
             label="Bắp nước"
             value={formatCurrency(range?.product_revenue)}
+          />
+          <Metric
+            label="Bắp nước bán lẻ"
+            value={formatCurrency(range?.concession_order_revenue)}
           />
           <Metric
             label="Giảm giá"

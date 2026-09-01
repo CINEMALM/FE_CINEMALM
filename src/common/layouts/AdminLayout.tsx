@@ -1,5 +1,6 @@
 import {
   AppstoreOutlined,
+  BarChartOutlined,
   CoffeeOutlined,
   CreditCardOutlined,
   DesktopOutlined,
@@ -22,10 +23,25 @@ import { useAuthSelector } from "../stores/useAuthStore";
 
 const menuItems = [
   { to: "/admin", label: "Tổng quan", icon: AppstoreOutlined, end: true },
+  {
+    to: "/admin/reports/movies",
+    label: "Doanh thu phim",
+    icon: BarChartOutlined,
+  },
   { to: "/admin/movies", label: "Phim", icon: VideoCameraOutlined },
   { to: "/admin/showtimes", label: "Suất chiếu", icon: ScheduleOutlined },
   { to: "/admin/tickets", label: "Vé", icon: CreditCardOutlined },
+  {
+    to: "/admin/ticket-recovery",
+    label: "Tra cứu vé",
+    icon: QrcodeOutlined,
+  },
   { to: "/admin/concession", label: "Quầy bắp nước", icon: CoffeeOutlined },
+  {
+    to: "/admin/concession-sales",
+    label: "Bán bắp nước",
+    icon: ShoppingOutlined,
+  },
   { to: "/admin/products", label: "Bắp nước", icon: ShoppingOutlined },
   { to: "/admin/promotions", label: "Khuyến mại", icon: GiftOutlined },
   { to: "/admin/categories", label: "Thể loại", icon: TagsOutlined },

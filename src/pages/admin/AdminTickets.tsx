@@ -267,6 +267,13 @@ const AdminTickets = () => {
                 {paymentStatusLabels[selectedTicket.paymentStatus].label}
               </Tag>
             </Descriptions.Item>
+            {selectedTicket.vnpayOrderCode && (
+              <Descriptions.Item label="Mã đơn hàng">
+                <span className="font-mono">
+                  {selectedTicket.vnpayOrderCode}
+                </span>
+              </Descriptions.Item>
+            )}
             <Descriptions.Item label="Thanh toán lúc">
               {selectedTicket.paidAt
                 ? dayjs(selectedTicket.paidAt).format("HH:mm DD/MM/YYYY")
