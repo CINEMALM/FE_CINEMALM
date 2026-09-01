@@ -29,6 +29,44 @@ export interface AdminListResult<T> {
   totalPages: number;
 }
 
+export interface MovieRevenueItem {
+  movie_id: number;
+  movie_name: string;
+  movie_poster?: string | null;
+  paid_orders: number;
+  sold_seats: number;
+  seat_revenue: number;
+  product_revenue: number;
+  discount_amount: number;
+  gross_revenue: number;
+  net_revenue: number;
+  average_order_value: number;
+  average_ticket_value: number;
+}
+
+export interface ConcessionOrder {
+  id: number;
+  order_code: string;
+  customer_name?: string | null;
+  customer_phone?: string | null;
+  total_amount: number;
+  payment_method: "CASH" | "BANK_TRANSFER";
+  amount_received: number;
+  change_amount: number;
+  transfer_reference?: string | null;
+  status: string;
+  paid_at: string;
+  items: Array<{
+    id: number;
+    product_variant_id: number;
+    product_name: string;
+    variant_name: string;
+    quantity: number;
+    unit_price: number;
+    total_price: number;
+  }>;
+}
+
 export interface CategoryPayload {
   name: string;
   description?: string;
@@ -235,6 +273,16 @@ interface BackendTicketProductItem {
   status?: string;
 }
 
+interface BackendTicketAdmission {
+  id: number | string;
+  ticket_item_id: number | string;
+  admission_code: string;
+  qr_token: string;
+  status: "valid" | "used" | "void";
+  used_at?: string | null;
+  ticket_item?: BackendTicketItem | null;
+}
+
 interface BackendTicket {
   id: number | string;
   user_id?: number | string | null;
@@ -254,12 +302,23 @@ interface BackendTicket {
   paid_at?: string | null;
   used_at?: string | null;
   expires_at?: string | null;
+  payment_due_at?: string | null;
+  payment_method?: string | null;
+  payment_code?: string | null;
+  latest_payment?: {
+    payment_code?: string | null;
+  } | null;
+  payments?: {
+    payment_code?: string | null;
+  }[];
+  channel?: string | null;
   check_in_open_at?: string | null;
   check_in_close_at?: string | null;
   qr_code?: string | null;
   cancel_description?: string | null;
   items?: BackendTicketItem[];
   product_items?: BackendTicketProductItem[];
+  admissions?: BackendTicketAdmission[];
   created_at: string;
   updated_at: string;
 }
@@ -423,6 +482,14 @@ const normalizeTicket = (ticket: BackendTicket): ITicket => ({
   paidAt: ticket.paid_at,
   usedAt: ticket.used_at,
   expiresAt: ticket.expires_at,
+  paymentDueAt: ticket.payment_due_at || ticket.expires_at,
+  paymentMethod: ticket.payment_method,
+  vnpayOrderCode:
+    ticket.latest_payment?.payment_code ||
+    ticket.payments?.find((payment) => payment.payment_code)?.payment_code ||
+    ticket.payment_code ||
+    null,
+  channel: ticket.channel,
   checkInOpenAt: ticket.check_in_open_at,
   checkInCloseAt: ticket.check_in_close_at,
   qrCode: ticket.qr_code || ticket.ticket_code,
@@ -446,6 +513,15 @@ const normalizeTicket = (ticket: BackendTicket): ITicket => ({
     totalPrice: Number(item.total_price || 0),
     isGift: Boolean(item.is_gift),
     status: item.status || "pending",
+  })),
+  admissions: (ticket.admissions || []).map((item) => ({
+    _id: String(item.id),
+    ticketItemId: String(item.ticket_item_id),
+    admissionCode: item.admission_code,
+    qrToken: item.qr_token,
+    status: item.status,
+    usedAt: item.used_at,
+    seatLabel: item.ticket_item?.seat_label,
   })),
   createdAt: ticket.created_at,
   updatedAt: ticket.updated_at,
@@ -592,11 +668,36 @@ export const adminService = {
   },
 
   async checkInTicket(ticketCode: string) {
-    const response = await api.post<ApiResponse<BackendTicket>>(
-      "/admin/tickets/check-in",
-      { ticket_code: ticketCode },
-    );
-    return normalizeTicket(response.data.data);
+    const response = await api.post<
+      ApiResponse<
+        BackendTicket & {
+          ticket?: BackendTicket;
+          admission?: BackendTicketAdmission;
+          check_in?: {
+            status: "partial" | "completed";
+            checked_in_count: number;
+            total_admissions: number;
+            remaining_count: number;
+          };
+        }
+      >
+    >("/admin/tickets/check-in", { ticket_code: ticketCode });
+    const data = response.data.data;
+    return {
+      ticket: normalizeTicket(data.ticket || data),
+      admission: data.admission
+        ? {
+            _id: String(data.admission.id),
+            ticketItemId: String(data.admission.ticket_item_id),
+            admissionCode: data.admission.admission_code,
+            qrToken: data.admission.qr_token,
+            status: data.admission.status,
+            usedAt: data.admission.used_at,
+            seatLabel: data.admission.ticket_item?.seat_label,
+          }
+        : null,
+      progress: data.check_in || null,
+    };
   },
 
   async concessionTicket(ticketCode: string) {
@@ -658,7 +759,9 @@ export const adminService = {
     product_items?: { product_variant_id: number; quantity: number }[];
     voucher_code?: string;
     payment_method: "CASH";
-    amount_received: number;
+    amount_received?: number;
+    transfer_reference?: string;
+    bank_code?: string;
   }) {
     const response = await api.post<ApiResponse<BackendTicket>>(
       "/admin/counter/bookings",
@@ -694,6 +797,58 @@ export const adminService = {
       }>
     >("/admin/realtime/health");
 
+    return response.data.data;
+  },
+  async movieRevenue(params: {
+    from: string;
+    to: string;
+    movie_id?: number;
+    page?: number;
+    per_page?: number;
+  }) {
+    const response = await api.get<
+      ApiResponse<{
+        data: MovieRevenueItem[];
+        summary: {
+          movies: number;
+          paid_orders: number;
+          sold_seats: number;
+          seat_revenue: number;
+          product_revenue: number;
+          discount_amount: number;
+          gross_revenue: number;
+          net_revenue: number;
+        };
+        meta: {
+          current_page: number;
+          per_page: number;
+          total: number;
+          last_page: number;
+          from: string;
+          to: string;
+        };
+      }>
+    >("/admin/reports/movies", { params });
+    return response.data.data;
+  },
+  async concessionOrders(params?: Record<string, unknown>) {
+    const response = await api.get<
+      ApiResponse<LaravelPaginator<ConcessionOrder>>
+    >("/admin/concession/orders", { params });
+    return response.data.data;
+  },
+  async createConcessionOrder(payload: {
+    customer_name?: string;
+    customer_phone?: string;
+    payment_method: "CASH" | "BANK_TRANSFER";
+    amount_received?: number;
+    transfer_reference?: string;
+    items: { product_variant_id: number; quantity: number }[];
+  }) {
+    const response = await api.post<ApiResponse<ConcessionOrder>>(
+      "/admin/concession/orders",
+      payload,
+    );
     return response.data.data;
   },
 };
