@@ -32,6 +32,16 @@ const formatCountdown = (seconds: number) => {
   )}`;
 };
 
+const seatHoldRemaining = (
+  heldUntil: string | null | undefined,
+  now: number,
+) => {
+  if (!heldUntil) return null;
+  const deadline = Date.parse(heldUntil);
+  if (!Number.isFinite(deadline)) return null;
+  return Math.max(0, Math.ceil((deadline - now) / 1000));
+};
+
 const resolveHoldDeadline = (payload?: {
   held_until?: string | null;
   hold_expires_in?: number;
@@ -184,12 +194,21 @@ const GuideSeat = () => {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [holdDeadline, setHoldDeadline] = useState<number | null>(null);
   const [holdRemainingSeconds, setHoldRemainingSeconds] = useState(0);
+  const [seatClockNow, setSeatClockNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setSeatClockNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const seatsQuery = useQuery({
     queryKey: ["SHOWTIME_SEATS", showtimeId],
     queryFn: () => getShowtimeSeats(showtimeId as string),
     enabled: Boolean(showtimeId),
     refetchOnWindowFocus: true,
+    // Reverb remains the primary realtime path. This low-frequency fallback
+    // heals stale seat state if a browser temporarily loses its WebSocket.
+    refetchInterval: 5000,
   });
   const productsQuery = useQuery({
     queryKey: ["PRODUCTS"],
@@ -213,6 +232,8 @@ const GuideSeat = () => {
                 bookingStatus: seat.status,
                 userId: seat.user_id == null ? null : String(seat.user_id),
                 heldUntil: seat.held_until,
+                holdContext: seat.hold_context,
+                countdownUntil: seat.countdown_until || seat.held_until,
               },
             ]),
           );
@@ -423,14 +444,10 @@ const GuideSeat = () => {
   });
 
   const holdSelection = useMutation({
+    scope: { id: "client-seat-selection" },
     mutationFn: (seatIds: string[]) => {
       if (!showtimeId) throw new Error("Missing showtime");
       return holdSeats(showtimeId, seatIds);
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["SHOWTIME_SEATS", showtimeId],
-      });
     },
     onError: async (error) => {
       const response = axios.isAxiosError(error) ? error.response?.data : null;
@@ -448,14 +465,10 @@ const GuideSeat = () => {
   });
 
   const releaseSelection = useMutation({
+    scope: { id: "client-seat-selection" },
     mutationFn: (seatIds: string[]) => {
       if (!showtimeId) throw new Error("Missing showtime");
       return releaseSeats(showtimeId, seatIds);
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["SHOWTIME_SEATS", showtimeId],
-      });
     },
     onError: async () => {
       await queryClient.invalidateQueries({
@@ -463,6 +476,53 @@ const GuideSeat = () => {
       });
     },
   });
+
+  useEffect(() => {
+    if (!showtimeId || !user?._id || !seatsQuery.data) return;
+    if (holdSelection.isPending || releaseSelection.isPending) return;
+
+    const ownedSelectionSeats = seatsQuery.data.layout
+      .flat()
+      .filter(
+        (seat) =>
+          seat.bookingStatus === "HOLD" &&
+          seat.userId === user._id &&
+          seat.holdContext === "SELECTION",
+      );
+    const restoredSeatIds = ownedSelectionSeats.map((seat) => seat._id);
+
+    setSelectedSeatIds((current) => {
+      if (
+        current.length === restoredSeatIds.length &&
+        current.every((seatId) => restoredSeatIds.includes(seatId))
+      ) {
+        return current;
+      }
+
+      return restoredSeatIds;
+    });
+
+    const restoredDeadlines = ownedSelectionSeats
+      .map((seat) => Date.parse(seat.countdownUntil || seat.heldUntil || ""))
+      .filter((deadline) => Number.isFinite(deadline) && deadline > Date.now());
+
+    if (!restoredSeatIds.length || !restoredDeadlines.length) {
+      setHoldDeadline(null);
+      setHoldRemainingSeconds(0);
+      setIsCheckoutOpen(false);
+      return;
+    }
+
+    // All seats in one selection session share the same deadline. Using the
+    // earliest value also prevents inconsistent data from extending a session.
+    setHoldDeadline(Math.min(...restoredDeadlines));
+  }, [
+    holdSelection.isPending,
+    releaseSelection.isPending,
+    seatsQuery.data,
+    showtimeId,
+    user?._id,
+  ]);
 
   useEffect(() => {
     setInformation({
@@ -475,7 +535,6 @@ const GuideSeat = () => {
   }, [priceByType, selectedSeats, setInformation, totalPrice]);
 
   const toggleSeat = (seat: ISeatStatus) => {
-    if (holdSelection.isPending || releaseSelection.isPending) return;
     if (!isAuthenticated) {
       requestLogin();
       return;
@@ -498,9 +557,9 @@ const GuideSeat = () => {
         setNotice("Không thể bỏ ghế này vì sẽ tạo một ghế trống đơn ở giữa.");
         return;
       }
+      setSelectedSeatIds(nextSeatIds);
       releaseSelection.mutate([seat._id], {
         onSuccess: () => {
-          setSelectedSeatIds(nextSeatIds);
           if (!nextSeatIds.length) {
             setHoldDeadline(null);
             setHoldRemainingSeconds(0);
@@ -524,10 +583,21 @@ const GuideSeat = () => {
       return;
     }
 
+    setSelectedSeatIds(nextSeatIds);
     holdSelection.mutate(nextSeatIds, {
       onSuccess: (payload) => {
-        setHoldDeadline(resolveHoldDeadline(payload));
-        setSelectedSeatIds(nextSeatIds);
+        const responseDeadline = resolveHoldDeadline(payload);
+        setHoldDeadline((currentDeadline) => {
+          if (!responseDeadline) return currentDeadline;
+          if (!currentDeadline || currentDeadline <= Date.now()) {
+            return responseDeadline;
+          }
+
+          // The first selected seat starts one fixed hold session. Adding more
+          // seats must never extend that session, even if an older API returns
+          // a freshly calculated five-minute deadline.
+          return Math.min(currentDeadline, responseDeadline);
+        });
       },
     });
   };
@@ -728,6 +798,13 @@ const GuideSeat = () => {
                           AVAILABLE_SEAT_COLOR,
                           SEAT_STATUS_COLOR.HOLD,
                         ].includes(seatColor);
+                        const remaining =
+                          seat.bookingStatus === "HOLD"
+                            ? seatHoldRemaining(
+                                seat.countdownUntil || seat.heldUntil,
+                                seatClockNow,
+                              )
+                            : null;
                         return (
                           <button
                             key={seat._id}
@@ -736,7 +813,7 @@ const GuideSeat = () => {
                             aria-pressed={isSelected}
                             aria-label={`Ghế ${seat.label}, ${seat.type}, ${seat.bookingStatus}`}
                             onClick={() => toggleSeat(seat)}
-                            className={`flex min-h-8 min-w-6 items-center justify-center text-[8px] transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F2F2F2] disabled:cursor-not-allowed disabled:opacity-70 sm:min-h-10 sm:min-w-8 sm:text-[10px] lg:min-h-11 lg:text-xs ${
+                            className={`relative flex min-h-8 min-w-6 items-center justify-center text-[8px] transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F2F2F2] disabled:cursor-not-allowed disabled:opacity-70 sm:min-h-10 sm:min-w-8 sm:text-[10px] lg:min-h-11 lg:text-xs ${
                               seatColor === AVAILABLE_SEAT_COLOR
                                 ? "hover:brightness-[1.65]"
                                 : "hover:brightness-110"
@@ -751,6 +828,15 @@ const GuideSeat = () => {
                               label={seat.label}
                               darkText={useDarkText}
                             />
+                            {remaining !== null && (
+                              <span className="absolute -bottom-1 left-1/2 z-10 min-w-max -translate-x-1/2 rounded bg-black/90 px-1 py-0.5 text-[7px] font-bold leading-none text-white shadow sm:text-[8px]">
+                                <span className="font-mono">
+                                  {remaining > 0
+                                    ? formatCountdown(remaining)
+                                    : formatCountdown(remaining)}
+                                </span>
+                              </span>
+                            )}
                           </button>
                         );
                       })}

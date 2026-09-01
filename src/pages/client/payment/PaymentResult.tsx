@@ -6,7 +6,10 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router";
-import { getPaymentStatus } from "../../../common/services/booking.service";
+import {
+  getBooking,
+  getPaymentStatus,
+} from "../../../common/services/booking.service";
 
 const POLLING_INTERVAL = 2500;
 const POLLING_TIMEOUT = 60_000;
@@ -21,8 +24,33 @@ const PaymentResult = () => {
 
   const paymentStatusQuery = useQuery({
     queryKey: ["PAYMENT_STATUS", paymentCode, ticketId],
-    queryFn: () => getPaymentStatus(paymentCode!, ticketId),
-    enabled: redirectStatus === "processing" && Boolean(paymentCode),
+    queryFn: async () => {
+      if (paymentCode) return getPaymentStatus(paymentCode, ticketId);
+      const ticket = await getBooking(ticketId!);
+      return {
+        paymentCode: "",
+        paymentStatus:
+          ticket.paymentStatus === "paid"
+            ? ("success" as const)
+            : ticket.paymentStatus === "pending"
+              ? ("pending" as const)
+              : ("failed" as const),
+        status:
+          ticket.paymentStatus === "paid" || ticket.status === "confirmed"
+            ? ("success" as const)
+            : ticket.paymentStatus === "pending"
+              ? ("processing" as const)
+              : ("failed" as const),
+        ticketId: ticket._id,
+        ticketCode: ticket.ticketCode,
+        ticketStatus: ticket.status,
+        ticketPaymentStatus: ticket.paymentStatus,
+        amount: ticket.totalPrice,
+        currency: "VND",
+      };
+    },
+    enabled:
+      redirectStatus === "processing" && Boolean(paymentCode || ticketId),
     retry: 1,
     refetchOnWindowFocus: false,
   });
@@ -39,7 +67,7 @@ const PaymentResult = () => {
   useEffect(() => {
     if (
       redirectStatus !== "processing" ||
-      !paymentCode ||
+      (!paymentCode && !ticketId) ||
       isPaid ||
       isFailed ||
       isTimedOut
@@ -57,12 +85,18 @@ const PaymentResult = () => {
     isPaid,
     isTimedOut,
     paymentCode,
+    ticketId,
     paymentStatusQuery.refetch,
     redirectStatus,
   ]);
 
   useEffect(() => {
-    if (redirectStatus !== "processing" || !paymentCode || isPaid || isFailed) {
+    if (
+      redirectStatus !== "processing" ||
+      (!paymentCode && !ticketId) ||
+      isPaid ||
+      isFailed
+    ) {
       return;
     }
 
@@ -71,13 +105,13 @@ const PaymentResult = () => {
     }, POLLING_TIMEOUT);
 
     return () => window.clearTimeout(timeoutTimer);
-  }, [isFailed, isPaid, paymentCode, redirectStatus]);
+  }, [isFailed, isPaid, paymentCode, redirectStatus, ticketId]);
 
   const isSuccess = redirectStatus === "success" || isPaid;
   const hasFailed = redirectStatus === "failed" || isFailed;
   const needsManualCheck =
     redirectStatus === "processing" &&
-    (!paymentCode || (isTimedOut && !isPaid && !isFailed));
+    ((!paymentCode && !ticketId) || (isTimedOut && !isPaid && !isFailed));
   const isProcessing =
     redirectStatus === "processing" &&
     !isSuccess &&

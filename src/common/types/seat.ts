@@ -19,4 +19,6 @@ export interface ISeatStatus extends ISeat {
   userId: string | null;
   bookingStatus: string;
   heldUntil?: string | null;
+  holdContext?: "SELECTION" | "PAYMENT";
+  countdownUntil?: string | null;
 }

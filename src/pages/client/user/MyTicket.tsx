@@ -34,7 +34,8 @@ const paymentStatusMeta: Record<
 const isTicketPayable = (ticket: ITicket) =>
   ticket.status === "pending" &&
   ticket.paymentStatus === "pending" &&
-  (!ticket.expiresAt || dayjs(ticket.expiresAt).isAfter(dayjs()));
+  (!(ticket.paymentDueAt || ticket.expiresAt) ||
+    dayjs(ticket.paymentDueAt || ticket.expiresAt).isAfter(dayjs()));
 
 const MyTicket = () => {
   const navigate = useNavigate();
@@ -129,13 +130,13 @@ const MyTicket = () => {
             },
             {
               title: "Hạn thanh toán",
-              dataIndex: "expiresAt",
+              dataIndex: "paymentDueAt",
               width: 180,
               render: (value: string | null | undefined, record) => {
-                if (record.status !== "pending" || !value) return "—";
-
-                return dayjs(value).isAfter(dayjs())
-                  ? dayjs(value).format("HH:mm DD/MM/YYYY")
+                const dueAt = value || record.expiresAt;
+                if (record.status !== "pending" || !dueAt) return "—";
+                return dayjs(dueAt).isAfter(dayjs())
+                  ? dayjs(dueAt).format("HH:mm DD/MM/YYYY")
                   : "Đã hết hạn";
               },
             },

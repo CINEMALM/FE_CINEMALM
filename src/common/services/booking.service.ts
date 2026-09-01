@@ -20,6 +20,8 @@ interface BackendSeatStatus {
   user_id?: number | string | null;
   status: string;
   held_until?: string | null;
+  hold_context?: "SELECTION" | "PAYMENT";
+  countdown_until?: string | null;
   seat: BackendSeat;
 }
 
@@ -71,6 +73,16 @@ interface BackendTicketProductItem {
   status?: string;
 }
 
+interface BackendTicketAdmission {
+  id: number | string;
+  ticket_item_id: number | string;
+  admission_code: string;
+  qr_token: string;
+  status: "valid" | "used" | "void";
+  used_at?: string | null;
+  ticket_item?: BackendTicketItem | null;
+}
+
 interface BackendTicket {
   id: number | string;
   user_id: number | string;
@@ -95,12 +107,23 @@ interface BackendTicket {
   start_time: string;
   paid_at?: string | null;
   expires_at?: string | null;
+  payment_due_at?: string | null;
+  payment_method?: string | null;
+  payment_code?: string | null;
+  latest_payment?: {
+    payment_code?: string | null;
+  } | null;
+  payments?: {
+    payment_code?: string | null;
+  }[];
+  channel?: string | null;
   check_in_open_at?: string | null;
   check_in_close_at?: string | null;
   qr_code?: string | null;
   cancel_description?: string | null;
   items?: BackendTicketItem[];
   product_items?: BackendTicketProductItem[];
+  admissions?: BackendTicketAdmission[];
   created_at: string;
   updated_at: string;
 }
@@ -133,6 +156,8 @@ const normalizeSeatStatus = (item: BackendSeatStatus): ISeatStatus => ({
   userId: item.user_id == null ? null : String(item.user_id),
   bookingStatus: item.status,
   heldUntil: item.held_until,
+  holdContext: item.hold_context,
+  countdownUntil: item.countdown_until || item.held_until,
 });
 
 const normalizeTicket = (ticket: BackendTicket): ITicket => ({
@@ -159,6 +184,14 @@ const normalizeTicket = (ticket: BackendTicket): ITicket => ({
   startTime: ticket.start_time,
   paidAt: ticket.paid_at,
   expiresAt: ticket.expires_at,
+  paymentDueAt: ticket.payment_due_at || ticket.expires_at,
+  paymentMethod: ticket.payment_method,
+  vnpayOrderCode:
+    ticket.latest_payment?.payment_code ||
+    ticket.payments?.find((payment) => payment.payment_code)?.payment_code ||
+    ticket.payment_code ||
+    null,
+  channel: ticket.channel,
   checkInOpenAt: ticket.check_in_open_at,
   checkInCloseAt: ticket.check_in_close_at,
   qrCode: ticket.qr_code || ticket.ticket_code,
@@ -182,6 +215,15 @@ const normalizeTicket = (ticket: BackendTicket): ITicket => ({
     totalPrice: Number(item.total_price || 0),
     isGift: Boolean(item.is_gift),
     status: item.status || "pending",
+  })),
+  admissions: (ticket.admissions || []).map((item) => ({
+    _id: String(item.id),
+    ticketItemId: String(item.ticket_item_id),
+    admissionCode: item.admission_code,
+    qrToken: item.qr_token,
+    status: item.status,
+    usedAt: item.used_at,
+    seatLabel: item.ticket_item?.seat_label,
   })),
   createdAt: ticket.created_at,
   updatedAt: ticket.updated_at,
@@ -335,6 +377,24 @@ export const getBooking = async (ticketId: string) => {
     `/bookings/${ticketId}`,
   );
   return normalizeTicket(response.data.data);
+};
+
+export const recoverTickets = async (payload: {
+  email: string;
+  phone: string;
+}) => {
+  const response = await api.post<
+    ApiResponse<{
+      tickets: BackendTicket[];
+      count: number;
+      support_message?: string | null;
+    }>
+  >("/tickets/recovery", payload);
+  return {
+    tickets: response.data.data.tickets.map(normalizeTicket),
+    count: response.data.data.count,
+    supportMessage: response.data.data.support_message,
+  };
 };
 
 export const cancelBooking = async (
