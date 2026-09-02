@@ -1,4 +1,5 @@
 import { Button, Form, Input, Result } from "antd";
+import { useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { useResetPasswordMutation } from "../../../common/hooks/useAuth";
 import { useMessage } from "../../../common/hooks/useMessage";
@@ -15,6 +16,7 @@ const ResetPassword = () => {
   const [searchParams] = useSearchParams();
   const initialEmail = searchParams.get("email") || "";
   const [form] = Form.useForm<ResetPasswordValues>();
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
   const resetPasswordMutation = useResetPasswordMutation();
   const { HandleError, antdMessage } = useMessage();
 
@@ -32,6 +34,15 @@ const ResetPassword = () => {
       form.resetFields();
     } catch (error) {
       HandleError(error, { fallback: "Không thể đặt lại mật khẩu." });
+    }
+  };
+
+  const handleContinueWithCode = async () => {
+    try {
+      await form.validateFields(["email", "code"]);
+      setShowPasswordForm(true);
+    } catch {
+      // Ant Design displays the validation errors next to the relevant field.
     }
   };
 
@@ -58,16 +69,25 @@ const ResetPassword = () => {
         CinemaLM Account
       </p>
       <h1 className="mt-3 font-display text-4xl font-bold text-[#F2F2F2]">
-        Đặt lại mật khẩu
+        {showPasswordForm ? "Đặt lại mật khẩu" : "Xác thực mã OTP"}
       </h1>
       <p className="mt-3 text-sm leading-7 text-[#9A9A9A]">
-        Nhập mã 6 số trong email và mật khẩu mới cho tài khoản của bạn.
+        {showPasswordForm
+          ? "Tạo mật khẩu mới cho tài khoản của bạn. Mã OTP sẽ được máy chủ kiểm tra khi xác nhận."
+          : "Nhập mã gồm 6 chữ số đã được gửi tới email của bạn."}
       </p>
 
       <Form
         form={form}
         layout="vertical"
-        onFinish={handleSubmit}
+        onFinish={(values) => {
+          if (!showPasswordForm) {
+            void handleContinueWithCode();
+            return;
+          }
+
+          void handleSubmit(values);
+        }}
         className="mt-8"
         initialValues={{ email: initialEmail }}
       >
@@ -84,6 +104,7 @@ const ResetPassword = () => {
         >
           <Input
             placeholder="Email"
+            readOnly={Boolean(initialEmail)}
             className="bg-transparent! text-white placeholder:text-white/50! border-white/10!"
             style={{ height: 56, boxShadow: "none" }}
           />
@@ -104,63 +125,104 @@ const ResetPassword = () => {
             inputMode="numeric"
             maxLength={6}
             placeholder="Nhập mã 6 số"
+            readOnly={showPasswordForm}
             className="bg-transparent! text-white placeholder:text-white/50! border-white/10!"
             style={{ height: 56, boxShadow: "none", letterSpacing: "0.2em" }}
           />
         </Form.Item>
 
-        <Form.Item
-          name="password"
-          label={<p className="text-base font-medium">Mật khẩu mới</p>}
-          rules={[
-            formRules.required("Mật khẩu mới"),
-            formRules.minLength("Mật khẩu", 8),
-          ]}
-        >
-          <Input.Password
-            placeholder="Mật khẩu mới"
-            className="bg-transparent! text-white placeholder:text-white/50! border-white/10!"
-            style={{ height: 56, boxShadow: "none" }}
-          />
-        </Form.Item>
+        {showPasswordForm ? (
+          <>
+            <Form.Item
+              name="password"
+              label={<p className="text-base font-medium">Mật khẩu mới</p>}
+              rules={[
+                formRules.required("Mật khẩu mới"),
+                formRules.minLength("Mật khẩu", 8),
+                {
+                  pattern: /^(?=.*[A-Za-z])(?=.*\d).{8,}$/,
+                  message:
+                    "Mật khẩu phải có ít nhất một chữ cái và một chữ số!",
+                },
+              ]}
+            >
+              <Input.Password
+                autoFocus
+                placeholder="Mật khẩu mới"
+                className="bg-transparent! text-white placeholder:text-white/50! border-white/10!"
+                style={{ height: 56, boxShadow: "none" }}
+              />
+            </Form.Item>
 
-        <Form.Item
-          name="password_confirmation"
-          label={<p className="text-base font-medium">Xác nhận mật khẩu</p>}
-          rules={[
-            formRules.required("Xác nhận mật khẩu"),
-            ({ getFieldValue }) => ({
-              validator(_, value) {
-                if (!value || value === getFieldValue("password")) {
-                  return Promise.resolve();
-                }
-                return Promise.reject(
-                  new Error("Mật khẩu xác nhận không khớp!"),
-                );
-              },
-            }),
-          ]}
-        >
-          <Input.Password
-            placeholder="Xác nhận mật khẩu"
-            className="bg-transparent! text-white placeholder:text-white/50! border-white/10!"
-            style={{ height: 56, boxShadow: "none" }}
-          />
-        </Form.Item>
+            <Form.Item
+              name="password_confirmation"
+              label={<p className="text-base font-medium">Xác nhận mật khẩu</p>}
+              dependencies={["password"]}
+              rules={[
+                formRules.required("Xác nhận mật khẩu"),
+                ({ getFieldValue }) => ({
+                  validator(_, value) {
+                    if (!value || value === getFieldValue("password")) {
+                      return Promise.resolve();
+                    }
+                    return Promise.reject(
+                      new Error("Mật khẩu xác nhận không khớp!"),
+                    );
+                  },
+                }),
+              ]}
+            >
+              <Input.Password
+                placeholder="Xác nhận mật khẩu"
+                className="bg-transparent! text-white placeholder:text-white/50! border-white/10!"
+                style={{ height: 56, boxShadow: "none" }}
+              />
+            </Form.Item>
 
-        <Button
-          htmlType="submit"
-          loading={resetPasswordMutation.isPending}
-          style={{
-            background: "var(--color-primary)",
-            height: 45,
-            width: "100%",
-            borderRadius: 2,
-            fontWeight: 700,
-          }}
-        >
-          Đặt lại mật khẩu
-        </Button>
+            <div className="flex gap-3">
+              <Button
+                onClick={() => {
+                  setShowPasswordForm(false);
+                  form.setFieldsValue({
+                    password: undefined,
+                    password_confirmation: undefined,
+                  });
+                }}
+                style={{ height: 45, flex: 1, borderRadius: 2 }}
+              >
+                Nhập lại mã
+              </Button>
+              <Button
+                htmlType="submit"
+                loading={resetPasswordMutation.isPending}
+                style={{
+                  background: "var(--color-primary)",
+                  height: 45,
+                  flex: 2,
+                  borderRadius: 2,
+                  fontWeight: 700,
+                }}
+              >
+                Đặt lại mật khẩu
+              </Button>
+            </div>
+          </>
+        ) : (
+          <Button
+            type="primary"
+            htmlType="button"
+            onClick={handleContinueWithCode}
+            style={{
+              background: "var(--color-primary)",
+              height: 45,
+              width: "100%",
+              borderRadius: 2,
+              fontWeight: 700,
+            }}
+          >
+            Tiếp tục
+          </Button>
+        )}
       </Form>
     </section>
   );

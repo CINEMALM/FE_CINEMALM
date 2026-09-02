@@ -840,9 +840,8 @@ export const adminService = {
   async createConcessionOrder(payload: {
     customer_name?: string;
     customer_phone?: string;
-    payment_method: "CASH" | "BANK_TRANSFER";
-    amount_received?: number;
-    transfer_reference?: string;
+    payment_method: "CASH";
+    amount_received: number;
     items: { product_variant_id: number; quantity: number }[];
   }) {
     const response = await api.post<ApiResponse<ConcessionOrder>>(

@@ -26,7 +26,6 @@ import { formatCurrency } from "../../common/utils";
 const AdminConcessionSales = () => {
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
-  const method = Form.useWatch("payment_method", form) || "CASH";
   const watchedItems = Form.useWatch("items", form) || [];
   const received = Number(Form.useWatch("amount_received", form) || 0);
   const products = useQuery({
@@ -62,10 +61,8 @@ const AdminConcessionSales = () => {
       const values = await form.validateFields();
       return adminService.createConcessionOrder({
         ...values,
-        amount_received:
-          values.payment_method === "CASH"
-            ? Number(values.amount_received)
-            : undefined,
+        payment_method: "CASH",
+        amount_received: Number(values.amount_received),
         items: values.items.map(
           (item: { product_variant_id: number; quantity: number }) => ({
             product_variant_id: Number(item.product_variant_id),
@@ -106,7 +103,7 @@ const AdminConcessionSales = () => {
         <Form
           form={form}
           layout="vertical"
-          initialValues={{ payment_method: "CASH", items: [{ quantity: 1 }] }}
+          initialValues={{ items: [{ quantity: 1 }] }}
         >
           <div className="grid gap-4 md:grid-cols-2">
             <Form.Item label="Tên khách" name="customer_name">
@@ -151,45 +148,30 @@ const AdminConcessionSales = () => {
             )}
           </Form.List>
           <div className="mt-5 grid gap-4 md:grid-cols-2">
-            <Form.Item label="Thanh toán" name="payment_method">
-              <Select
-                options={[
-                  { value: "CASH", label: "Tiền mặt" },
-                  { value: "BANK_TRANSFER", label: "Chuyển khoản" },
-                ]}
-              />
+            <Form.Item label="Thanh toán">
+              <Input value="Tiền mặt" disabled />
             </Form.Item>
-            {method === "CASH" ? (
-              <Form.Item
-                label="Tiền khách đưa"
-                name="amount_received"
-                rules={[
-                  { required: true },
-                  {
-                    validator: (_, value) =>
-                      Number(value || 0) >= total
-                        ? Promise.resolve()
-                        : Promise.reject(new Error("Tiền nhận chưa đủ.")),
-                  },
-                ]}
-              >
-                <InputNumber className="w-full" min={0} step={10000} />
-              </Form.Item>
-            ) : (
-              <Form.Item
-                label="Mã giao dịch"
-                name="transfer_reference"
-                rules={[{ required: true, message: "Nhập mã giao dịch." }]}
-              >
-                <Input />
-              </Form.Item>
-            )}
+            <Form.Item
+              label="Tiền khách đưa"
+              name="amount_received"
+              rules={[
+                { required: true },
+                {
+                  validator: (_, value) =>
+                    Number(value || 0) >= total
+                      ? Promise.resolve()
+                      : Promise.reject(new Error("Tiền nhận chưa đủ.")),
+                },
+              ]}
+            >
+              <InputNumber className="w-full" min={0} step={10000} />
+            </Form.Item>
           </div>
           <Alert
             className="mb-4"
-            type={method === "CASH" && received < total ? "warning" : "info"}
+            type={received < total ? "warning" : "info"}
             showIcon
-            message={`Tổng cộng: ${formatCurrency(total)}${method === "CASH" ? ` · Tiền thối: ${formatCurrency(Math.max(0, received - total))}` : ""}`}
+            message={`Tổng cộng: ${formatCurrency(total)} · Tiền thối: ${formatCurrency(Math.max(0, received - total))}`}
           />
           <Button
             type="primary"
@@ -225,7 +207,7 @@ const AdminConcessionSales = () => {
               title: "Thanh toán",
               render: (_, order) =>
                 order.payment_method === "BANK_TRANSFER"
-                  ? "Chuyển khoản"
+                  ? "Chuyển khoản (dữ liệu cũ)"
                   : "Tiền mặt",
             },
             {
