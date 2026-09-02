@@ -64,6 +64,7 @@ const LoginModal = ({
         open={global ? globalOpen : open}
         onCancel={() => {
           setOpen(false);
+          setGlobalOpen(false);
           if (global) clearPendingLogin();
         }}
         afterClose={() => form.resetFields()}
@@ -128,7 +129,12 @@ const LoginModal = ({
           </Form.Item>
 
           <div className="flex justify-end">
-            <ForgotPasswordModal>
+            <ForgotPasswordModal
+              onSwitch={() => {
+                setOpen(false);
+                setGlobalOpen(false);
+              }}
+            >
               <span className="text-primary cursor-pointer hover:underline">
                 Quên mật khẩu
               </span>
