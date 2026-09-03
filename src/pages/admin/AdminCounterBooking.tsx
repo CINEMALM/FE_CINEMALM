@@ -424,6 +424,17 @@ const AdminCounterBooking = () => {
             </div>
           ))}
 
+          {createdTicket.productItems?.length ? (
+            <div>
+              <div className="counter-print-ticket__qr">
+                <QRCodeCanvas value={createdTicket.ticketCode} size={150} />
+              </div>
+              <div className="counter-print-ticket__subtitle">
+                QR NHAN BAP NUOC · {createdTicket.ticketCode}
+              </div>
+            </div>
+          ) : null}
+
           <div className="counter-print-ticket__row">
             <span>Ma ve</span>
             <strong>{createdTicket.ticketCode}</strong>
@@ -785,6 +796,26 @@ const AdminCounterBooking = () => {
                     </div>
                   ))}
                 </div>
+                {createdTicket.productItems?.length ? (
+                  <div className="mt-4 border border-[#DC0000]/30 bg-white p-4 text-center text-black">
+                    <Typography.Text strong className="!text-black">
+                      QR nhận bắp nước / combo
+                    </Typography.Text>
+                    <div className="mt-3 flex justify-center">
+                      <QRCodeCanvas
+                        value={createdTicket.ticketCode}
+                        size={160}
+                      />
+                    </div>
+                    <p className="mt-2 break-all text-xs font-bold">
+                      {createdTicket.ticketCode}
+                    </p>
+                    <p className="mt-1 text-xs">
+                      QR này chỉ dùng nhận đồ, không dùng check-in vào phòng
+                      chiếu.
+                    </p>
+                  </div>
+                ) : null}
                 <Descriptions column={1} size="small" className="mt-4">
                   <Descriptions.Item label="Phim">
                     {createdTicket.movieName}

@@ -20,7 +20,7 @@ const AdminCounterBooking = lazy(
 const AdminDashboard = lazy(() => import("../pages/admin/AdminDashboard"));
 const AdminMovies = lazy(() => import("../pages/admin/AdminMovies"));
 const AdminMovieRevenue = lazy(
-  () => import("../pages/admin/AdminMovieRevenue"),
+  () => import("../pages/admin/AdminRevenueAnalytics"),
 );
 const AdminProducts = lazy(() => import("../pages/admin/AdminProducts"));
 const AdminPromotions = lazy(() => import("../pages/admin/AdminPromotions"));

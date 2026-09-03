@@ -308,6 +308,39 @@ const TicketDetail = () => {
               </div>
             </div>
           )}
+
+          {(item.status === "confirmed" || item.status === "used") &&
+            Boolean(item.productItems?.length) && (
+              <div className="mt-6 border border-white/10 p-5">
+                <h2 className="text-sm font-black uppercase tracking-[0.14em]">
+                  Mã nhận bắp nước
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-[#9A9A9A]">
+                  Đây là QR nhận toàn bộ bắp nước/combo của đơn. QR này tách
+                  biệt với QR check-in từng ghế và chỉ được xác nhận một lần tại
+                  quầy.
+                </p>
+                <div className="mt-4 flex flex-col items-center gap-3 bg-white p-5 text-[#0A0A0A] sm:w-fit">
+                  <QRCodeCanvas value={item.ticketCode} size={180} />
+                  <b className="break-all text-center">{item.ticketCode}</b>
+                  <Tag
+                    color={
+                      item.productItems?.every(
+                        (product) => product.status === "fulfilled",
+                      )
+                        ? "green"
+                        : "gold"
+                    }
+                  >
+                    {item.productItems?.every(
+                      (product) => product.status === "fulfilled",
+                    )
+                      ? "Đã nhận hàng"
+                      : "Chưa nhận hàng"}
+                  </Tag>
+                </div>
+              </div>
+            )}
         </div>
       </div>
     </div>

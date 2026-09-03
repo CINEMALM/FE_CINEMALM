@@ -42,6 +42,64 @@ export interface MovieRevenueItem {
   net_revenue: number;
   average_order_value: number;
   average_ticket_value: number;
+  available_seats: number;
+  occupancy_rate: number;
+}
+
+export interface MovieRevenueReport {
+  data: MovieRevenueItem[];
+  summary: {
+    movies: number;
+    paid_orders: number;
+    sold_seats: number;
+    available_seats: number;
+    occupancy_rate: number;
+    seat_revenue: number;
+    product_revenue: number;
+    discount_amount: number;
+    gross_revenue: number;
+    net_revenue: number;
+    average_ticket_value: number;
+    trends: Record<string, number | null>;
+  };
+  previous_summary: Record<string, number>;
+  revenue_trend: Array<{
+    date: string;
+    label: string;
+    gross_revenue: number;
+    net_revenue: number;
+    seat_revenue: number;
+    product_revenue: number;
+    discount_amount: number;
+    paid_orders: number;
+    sold_seats: number;
+  }>;
+  revenue_breakdown: Array<{
+    key: string;
+    label: string;
+    value: number;
+  }>;
+  movie_performance: MovieRevenueItem[];
+  screening_performance: Array<{
+    showtime_id: number;
+    start_time: string;
+    movie_name: string;
+    room_name: string;
+    total_seats: number;
+    sold_seats: number;
+    occupancy_rate: number;
+    revenue: number;
+    performance_level: "HOT" | "GOOD" | "LOW";
+  }>;
+  insights: string[];
+  meta: {
+    current_page: number;
+    per_page: number;
+    total: number;
+    last_page: number;
+    from: string;
+    to: string;
+  };
 }
 
 export interface ConcessionOrder {
@@ -56,6 +114,8 @@ export interface ConcessionOrder {
   transfer_reference?: string | null;
   status: string;
   paid_at: string;
+  fulfilled_at?: string | null;
+  fulfilled_by?: number | null;
   items: Array<{
     id: number;
     product_variant_id: number;
@@ -65,6 +125,20 @@ export interface ConcessionOrder {
     unit_price: number;
     total_price: number;
   }>;
+}
+
+export interface ConcessionPickup {
+  sourceType: "ticket" | "counter_order";
+  pickupCode: string;
+  qrValue: string;
+  status: "paid" | "completed";
+  customerName?: string | null;
+  customerPhone?: string | null;
+  paidAt?: string | null;
+  fulfilledAt?: string | null;
+  ticket: ITicket | null;
+  order: ConcessionOrder | null;
+  items: ITicket["productItems"];
 }
 
 export interface CategoryPayload {
@@ -323,6 +397,20 @@ interface BackendTicket {
   updated_at: string;
 }
 
+interface BackendConcessionPickup {
+  source_type: "ticket" | "counter_order";
+  pickup_code: string;
+  qr_value: string;
+  status: "paid" | "completed";
+  customer_name?: string | null;
+  customer_phone?: string | null;
+  paid_at?: string | null;
+  fulfilled_at?: string | null;
+  ticket?: BackendTicket | null;
+  order?: ConcessionOrder | null;
+  items?: BackendTicketProductItem[];
+}
+
 interface BackendProduct {
   id: number | string;
   name: string;
@@ -527,6 +615,34 @@ const normalizeTicket = (ticket: BackendTicket): ITicket => ({
   updatedAt: ticket.updated_at,
 });
 
+const normalizeConcessionPickup = (
+  pickup: BackendConcessionPickup,
+): ConcessionPickup => ({
+  sourceType: pickup.source_type,
+  pickupCode: pickup.pickup_code,
+  qrValue: pickup.qr_value,
+  status: pickup.status,
+  customerName: pickup.customer_name,
+  customerPhone: pickup.customer_phone,
+  paidAt: pickup.paid_at,
+  fulfilledAt: pickup.fulfilled_at,
+  ticket: pickup.ticket ? normalizeTicket(pickup.ticket) : null,
+  order: pickup.order || null,
+  items: (pickup.items || []).map((item) => ({
+    _id: String(item.id),
+    productVariantId:
+      item.product_variant_id == null ? null : String(item.product_variant_id),
+    productName: item.product_name,
+    variantName: item.variant_name,
+    sku: item.sku || "",
+    unitPrice: Number(item.unit_price || 0),
+    quantity: Number(item.quantity || 0),
+    totalPrice: Number(item.total_price || 0),
+    isGift: Boolean(item.is_gift),
+    status: item.status || "pending",
+  })),
+});
+
 export const adminService = {
   async dashboardOverview(params?: Record<string, unknown>) {
     const response = await api.get<ApiResponse<IAdminDashboardOverview>>(
@@ -701,22 +817,22 @@ export const adminService = {
   },
 
   async concessionTicket(ticketCode: string) {
-    const response = await api.get<ApiResponse<BackendTicket>>(
+    const response = await api.get<ApiResponse<BackendConcessionPickup>>(
       "/admin/concession/ticket",
       { params: { ticket_code: ticketCode } },
     );
-    return normalizeTicket(response.data.data);
+    return normalizeConcessionPickup(response.data.data);
   },
 
   async fulfillConcession(ticketCode: string, itemIds?: string[]) {
-    const response = await api.post<ApiResponse<BackendTicket>>(
+    const response = await api.post<ApiResponse<BackendConcessionPickup>>(
       "/admin/concession/fulfill",
       {
         ticket_code: ticketCode,
         item_ids: itemIds?.map(Number),
       },
     );
-    return normalizeTicket(response.data.data);
+    return normalizeConcessionPickup(response.data.data);
   },
 
   async products(params?: Record<string, unknown>) {
@@ -803,32 +919,15 @@ export const adminService = {
     from: string;
     to: string;
     movie_id?: number;
+    room_id?: number;
+    category_id?: number;
     page?: number;
     per_page?: number;
   }) {
-    const response = await api.get<
-      ApiResponse<{
-        data: MovieRevenueItem[];
-        summary: {
-          movies: number;
-          paid_orders: number;
-          sold_seats: number;
-          seat_revenue: number;
-          product_revenue: number;
-          discount_amount: number;
-          gross_revenue: number;
-          net_revenue: number;
-        };
-        meta: {
-          current_page: number;
-          per_page: number;
-          total: number;
-          last_page: number;
-          from: string;
-          to: string;
-        };
-      }>
-    >("/admin/reports/movies", { params });
+    const response = await api.get<ApiResponse<MovieRevenueReport>>(
+      "/admin/reports/movies",
+      { params },
+    );
     return response.data.data;
   },
   async concessionOrders(params?: Record<string, unknown>) {
