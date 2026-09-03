@@ -32,15 +32,17 @@ const AdminConcession = () => {
   const [scannerError, setScannerError] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  const ticketQuery = useQuery({
+  const pickupQuery = useQuery({
     queryKey: ["ADMIN_CONCESSION_TICKET", submittedCode],
     queryFn: () => adminService.concessionTicket(submittedCode),
     enabled: Boolean(submittedCode),
     retry: false,
   });
 
-  const ticket = ticketQuery.data;
-  const productItems = ticket?.productItems || [];
+  const pickup = pickupQuery.data;
+  const ticket = pickup?.ticket;
+  const order = pickup?.order;
+  const productItems = pickup?.items || [];
   const pendingItems = useMemo(
     () => productItems.filter((item) => item.status === "pending"),
     [productItems],
@@ -49,7 +51,7 @@ const AdminConcession = () => {
   const search = (rawCode = ticketCode) => {
     const code = rawCode.trim().toUpperCase();
     if (!code) {
-      message.warning("Nhập mã vé hoặc scan QR trước.");
+      message.warning("Nhập mã nhận bắp nước hoặc quét QR trước.");
       return;
     }
     setTicketCode(code);
@@ -86,9 +88,8 @@ const AdminConcession = () => {
           Quầy bắp nước
         </Typography.Title>
         <p className="max-w-3xl text-sm leading-6 text-[#9A9A9A]">
-          Màn này dùng cho nhân viên quầy bắp nước/combo. Scan QR hoặc nhập mã
-          vé, phát đúng các món còn “Chưa phát”, rồi xác nhận đã phát. Check-in
-          vào phòng chiếu vẫn nằm ở màn Check-in QR riêng.
+          Quét QR nhận bắp nước hoặc nhập mã đơn để phát hàng. QR check-in theo
+          từng ghế chỉ dùng để vào phòng chiếu và không thể nhận bắp nước.
         </p>
       </div>
 
@@ -127,12 +128,12 @@ const AdminConcession = () => {
             showIcon
             message={
               scannerError ||
-              "Đưa QR trên vé vào camera. Nếu trình duyệt không mở camera, dùng ô nhập mã bên cạnh."
+              "Đưa QR nhận bắp nước vào camera. Nếu không mở được camera, nhập mã đơn bên cạnh."
             }
           />
         </Card>
 
-        <Card title="Nhập mã vé thủ công">
+        <Card title="Nhập mã nhận hàng thủ công">
           <Space.Compact className="w-full">
             <Input
               autoFocus
@@ -141,12 +142,12 @@ const AdminConcession = () => {
                 setTicketCode(event.target.value.toUpperCase())
               }
               onPressEnter={() => search()}
-              placeholder="Scan QR hoặc nhập mã vé, ví dụ CLM2026..."
+              placeholder="Mã đơn vé CLM... hoặc mã đơn quầy CCN..."
             />
             <Button
               type="primary"
               icon={<SearchOutlined />}
-              loading={ticketQuery.isFetching}
+              loading={pickupQuery.isFetching}
               onClick={() => search()}
             >
               Tra cứu
@@ -155,42 +156,58 @@ const AdminConcession = () => {
         </Card>
       </div>
 
-      {ticketQuery.isError ? (
+      {pickupQuery.isError ? (
         <Alert
           type="error"
           showIcon
-          message="Không tìm thấy vé hợp lệ hoặc vé chưa thanh toán."
+          message="Không tìm thấy đơn đã thanh toán có bắp nước/combo. Hãy dùng QR nhận hàng, không dùng QR ghế."
         />
       ) : null}
 
       {!submittedCode ? (
-        <Empty description="Scan hoặc nhập mã vé để bắt đầu phát bắp nước/combo." />
+        <Empty description="Quét QR hoặc nhập mã nhận hàng để bắt đầu phát bắp nước/combo." />
       ) : null}
 
-      {ticket ? (
+      {pickup ? (
         <div className="grid gap-6 xl:grid-cols-[1fr_420px]">
-          <Card title="Thông tin vé">
+          <Card title={ticket ? "Thông tin vé" : "Thông tin đơn tại quầy"}>
             <Descriptions column={1} size="small">
-              <Descriptions.Item label="Mã vé">
-                <b>{ticket.ticketCode}</b>
+              <Descriptions.Item label="Mã nhận hàng">
+                <b>{pickup.pickupCode}</b>
               </Descriptions.Item>
-              <Descriptions.Item label="Phim">
-                {ticket.movieName}
-              </Descriptions.Item>
-              <Descriptions.Item label="Suất chiếu">
-                {dayjs(ticket.startTime).format("HH:mm DD/MM/YYYY")}
-              </Descriptions.Item>
-              <Descriptions.Item label="Phòng">
-                {ticket.roomName}
-              </Descriptions.Item>
-              <Descriptions.Item label="Ghế">
-                {ticket.items.map((item) => item.seatLabel).join(", ")}
-              </Descriptions.Item>
-              <Descriptions.Item label="Trạng thái vé">
-                <Tag color={ticket.status === "used" ? "blue" : "green"}>
-                  {ticket.status === "used" ? "Đã check-in" : "Chưa check-in"}
-                </Tag>
-              </Descriptions.Item>
+              {ticket ? (
+                <>
+                  <Descriptions.Item label="Phim">
+                    {ticket.movieName}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Suất chiếu">
+                    {dayjs(ticket.startTime).format("HH:mm DD/MM/YYYY")}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Phòng">
+                    {ticket.roomName}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Ghế">
+                    {ticket.items.map((item) => item.seatLabel).join(", ")}
+                  </Descriptions.Item>
+                </>
+              ) : (
+                <>
+                  <Descriptions.Item label="Khách hàng">
+                    {pickup.customerName || "Khách vãng lai"}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Số điện thoại">
+                    {pickup.customerPhone || "-"}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Tổng tiền">
+                    {formatCurrency(Number(order?.total_amount || 0))}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Thanh toán lúc">
+                    {pickup.paidAt
+                      ? dayjs(pickup.paidAt).format("HH:mm DD/MM/YYYY")
+                      : "-"}
+                  </Descriptions.Item>
+                </>
+              )}
               <Descriptions.Item label="Thanh toán">
                 <Tag color="green">Đã thanh toán</Tag>
               </Descriptions.Item>
@@ -213,7 +230,7 @@ const AdminConcession = () => {
                 className="mb-4"
                 type="success"
                 showIcon
-                message="Tất cả bắp nước/combo của vé này đã được phát."
+                message="Tất cả bắp nước/combo của đơn này đã được phát."
               />
             )}
             <Button
@@ -223,7 +240,11 @@ const AdminConcession = () => {
               disabled={!pendingItems.length}
               loading={fulfill.isPending}
               onClick={() =>
-                fulfill.mutate(pendingItems.map((item) => item._id))
+                fulfill.mutate(
+                  pickup.sourceType === "ticket"
+                    ? pendingItems.map((item) => item._id)
+                    : undefined,
+                )
               }
             >
               Xác nhận đã phát tất cả
@@ -285,6 +306,7 @@ const AdminConcession = () => {
                       disabled={item.status === "fulfilled"}
                       loading={fulfill.isPending}
                       onClick={() => fulfill.mutate([item._id])}
+                      hidden={pickup.sourceType !== "ticket"}
                     >
                       Đã phát món này
                     </Button>
