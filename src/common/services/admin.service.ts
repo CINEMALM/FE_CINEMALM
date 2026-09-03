@@ -337,14 +337,37 @@ interface BackendTicketItem {
 interface BackendTicketProductItem {
   id: number | string;
   product_variant_id?: number | string | null;
-  product_name: string;
-  variant_name: string;
+  productVariantId?: number | string | null;
+  product_name?: string | null;
+  productName?: string | null;
+  name?: string | null;
+  variant_name?: string | null;
+  variantName?: string | null;
   sku?: string | null;
-  unit_price: number | string;
-  quantity: number | string;
-  total_price: number | string;
+  unit_price?: number | string | null;
+  unitPrice?: number | string | null;
+  price?: number | string | null;
+  quantity?: number | string | null;
+  qty?: number | string | null;
+  total_price?: number | string | null;
+  totalPrice?: number | string | null;
   is_gift?: boolean;
+  isGift?: boolean;
   status?: string;
+  product_variant?: {
+    id?: number | string;
+    name?: string | null;
+    sku?: string | null;
+    price?: number | string | null;
+    product?: { name?: string | null } | null;
+  } | null;
+  productVariant?: {
+    id?: number | string;
+    name?: string | null;
+    sku?: string | null;
+    price?: number | string | null;
+    product?: { name?: string | null } | null;
+  } | null;
 }
 
 interface BackendTicketAdmission {
@@ -398,16 +421,22 @@ interface BackendTicket {
 }
 
 interface BackendConcessionPickup {
-  source_type: "ticket" | "counter_order";
-  pickup_code: string;
-  qr_value: string;
-  status: "paid" | "completed";
+  source_type?: "ticket" | "counter_order";
+  pickup_code?: string;
+  qr_value?: string;
+  status?: "paid" | "completed";
   customer_name?: string | null;
   customer_phone?: string | null;
   paid_at?: string | null;
   fulfilled_at?: string | null;
   ticket?: BackendTicket | null;
-  order?: ConcessionOrder | null;
+  order?:
+    | (Partial<ConcessionOrder> & {
+        totalAmount?: number | string;
+        amountReceived?: number | string;
+        changeAmount?: number | string;
+      })
+    | null;
   items?: BackendTicketProductItem[];
 }
 
@@ -593,8 +622,9 @@ const normalizeTicket = (ticket: BackendTicket): ITicket => ({
     _id: String(item.id),
     productVariantId:
       item.product_variant_id == null ? null : String(item.product_variant_id),
-    productName: item.product_name,
-    variantName: item.variant_name,
+    productName:
+      item.product_name || item.productName || item.name || "Sản phẩm",
+    variantName: item.variant_name || item.variantName || "Mặc định",
     sku: item.sku || "",
     unitPrice: Number(item.unit_price || 0),
     quantity: Number(item.quantity || 0),
@@ -615,33 +645,114 @@ const normalizeTicket = (ticket: BackendTicket): ITicket => ({
   updatedAt: ticket.updated_at,
 });
 
-const normalizeConcessionPickup = (
-  pickup: BackendConcessionPickup,
-): ConcessionPickup => ({
-  sourceType: pickup.source_type,
-  pickupCode: pickup.pickup_code,
-  qrValue: pickup.qr_value,
-  status: pickup.status,
-  customerName: pickup.customer_name,
-  customerPhone: pickup.customer_phone,
-  paidAt: pickup.paid_at,
-  fulfilledAt: pickup.fulfilled_at,
-  ticket: pickup.ticket ? normalizeTicket(pickup.ticket) : null,
-  order: pickup.order || null,
-  items: (pickup.items || []).map((item) => ({
+const normalizeConcessionProductItem = (
+  item: BackendTicketProductItem,
+): NonNullable<ITicket["productItems"]>[number] => {
+  const variant = item.product_variant || item.productVariant;
+  const variantId =
+    item.product_variant_id ?? item.productVariantId ?? variant?.id ?? null;
+  const quantityValue = item.quantity ?? item.qty;
+  const quantity = quantityValue == null ? 1 : Number(quantityValue);
+  const unitPrice = Number(
+    item.unit_price ?? item.unitPrice ?? item.price ?? variant?.price ?? 0,
+  );
+  const rawTotal = item.total_price ?? item.totalPrice;
+
+  return {
     _id: String(item.id),
-    productVariantId:
-      item.product_variant_id == null ? null : String(item.product_variant_id),
-    productName: item.product_name,
-    variantName: item.variant_name,
-    sku: item.sku || "",
-    unitPrice: Number(item.unit_price || 0),
-    quantity: Number(item.quantity || 0),
-    totalPrice: Number(item.total_price || 0),
-    isGift: Boolean(item.is_gift),
+    productVariantId: variantId == null ? null : String(variantId),
+    productName:
+      item.product_name ||
+      item.productName ||
+      item.name ||
+      variant?.product?.name ||
+      (variantId == null ? "Sản phẩm" : `Sản phẩm #${variantId}`),
+    variantName:
+      item.variant_name || item.variantName || variant?.name || "Mặc định",
+    sku: item.sku || variant?.sku || "",
+    unitPrice,
+    quantity: Number.isFinite(quantity) ? quantity : 0,
+    totalPrice:
+      rawTotal == null || Number(rawTotal) === 0
+        ? unitPrice * (Number.isFinite(quantity) ? quantity : 0)
+        : Number(rawTotal),
+    isGift: Boolean(item.is_gift ?? item.isGift),
     status: item.status || "pending",
-  })),
-});
+  };
+};
+
+const normalizeConcessionPickup = (
+  response: BackendConcessionPickup | BackendTicket,
+): ConcessionPickup => {
+  // Older deployments return the paid ticket directly. In that response,
+  // `items` are seats and only `product_items` are concession products.
+  if (!("source_type" in response) || !response.source_type) {
+    const ticket = response as BackendTicket;
+    const items = (ticket.product_items || []).map(
+      normalizeConcessionProductItem,
+    );
+
+    return {
+      sourceType: "ticket",
+      pickupCode: ticket.ticket_code,
+      qrValue: ticket.ticket_code,
+      status: items.every((item) => item.status === "fulfilled")
+        ? "completed"
+        : "paid",
+      customerName: ticket.customer_name,
+      customerPhone: ticket.customer_phone,
+      paidAt: ticket.paid_at,
+      fulfilledAt: null,
+      ticket: normalizeTicket(ticket),
+      order: null,
+      items,
+    };
+  }
+
+  const pickup = response as BackendConcessionPickup & {
+    source_type: "ticket" | "counter_order";
+  };
+  const rawItems =
+    pickup.source_type === "ticket" && pickup.ticket?.product_items
+      ? pickup.ticket.product_items
+      : pickup.items || [];
+  const items = rawItems.map(normalizeConcessionProductItem);
+  const computedTotal = items.reduce((sum, item) => sum + item.totalPrice, 0);
+  const rawOrder = pickup.order;
+  const order = rawOrder
+    ? ({
+        ...rawOrder,
+        total_amount: Number(
+          rawOrder.total_amount ?? rawOrder.totalAmount ?? computedTotal,
+        ),
+        amount_received: Number(
+          rawOrder.amount_received ?? rawOrder.amountReceived ?? 0,
+        ),
+        change_amount: Number(
+          rawOrder.change_amount ?? rawOrder.changeAmount ?? 0,
+        ),
+      } as ConcessionOrder)
+    : null;
+
+  if (order && order.total_amount === 0 && computedTotal > 0) {
+    order.total_amount = computedTotal;
+  }
+
+  return {
+    sourceType: pickup.source_type,
+    pickupCode: pickup.pickup_code || pickup.ticket?.ticket_code || "",
+    qrValue:
+      pickup.qr_value || pickup.pickup_code || pickup.ticket?.ticket_code || "",
+    status: pickup.status || "paid",
+    customerName: pickup.customer_name,
+    customerPhone: pickup.customer_phone,
+    paidAt: pickup.paid_at,
+    fulfilledAt: pickup.fulfilled_at,
+    ticket: pickup.ticket ? normalizeTicket(pickup.ticket) : null,
+    order,
+    items,
+  };
+};
 
 export const adminService = {
   async dashboardOverview(params?: Record<string, unknown>) {

@@ -47,6 +47,10 @@ const AdminConcession = () => {
     () => productItems.filter((item) => item.status === "pending"),
     [productItems],
   );
+  const pendingQuantity = useMemo(
+    () => pendingItems.reduce((sum, item) => sum + item.quantity, 0),
+    [pendingItems],
+  );
 
   const search = (rawCode = ticketCode) => {
     const code = rawCode.trim().toUpperCase();
@@ -223,7 +227,7 @@ const AdminConcession = () => {
                 className="mb-4"
                 type="warning"
                 showIcon
-                message={`Còn ${pendingItems.length} món chưa phát.`}
+                message={`Còn ${pendingQuantity} món chưa phát.`}
               />
             ) : (
               <Alert
@@ -284,7 +288,18 @@ const AdminConcession = () => {
                   title: "Giá",
                   width: 130,
                   render: (_, item) =>
-                    item.isGift ? "0 đ" : formatCurrency(item.totalPrice),
+                    item.isGift ? (
+                      "0 đ"
+                    ) : (
+                      <div>
+                        <b>{formatCurrency(item.totalPrice)}</b>
+                        {item.quantity > 1 ? (
+                          <div className="text-xs text-[#9A9A9A]">
+                            {formatCurrency(item.unitPrice)}/món
+                          </div>
+                        ) : null}
+                      </div>
+                    ),
                 },
                 {
                   title: "Trạng thái",
